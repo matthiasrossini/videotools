@@ -23,8 +23,11 @@ def process():
         # Download YouTube video
         video_path = download_youtube_video(youtube_url, app.config['UPLOAD_FOLDER'])
         
-        # Process video and get clip paths
-        clip_paths = process_video(video_path)
+        # Process video and get clip paths and all frames
+        clip_paths, all_frames = process_video(video_path)
+        
+        # Sort all frames by timestamp
+        all_frames.sort(key=lambda x: x['timestamp'])
         
         # Create a list of clip filenames and their corresponding frame directories
         clips_and_frames = []
@@ -37,7 +40,17 @@ def process():
                 'frames': frame_filenames
             })
         
-        return jsonify({'success': True, 'clips_and_frames': clips_and_frames})
+        return jsonify({
+            'success': True,
+            'clips_and_frames': clips_and_frames,
+            'timeline_frames': [
+                {
+                    'path': os.path.basename(frame['path']),
+                    'timestamp': frame['timestamp'],
+                    'clip': frame['clip']
+                } for frame in all_frames
+            ]
+        })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 

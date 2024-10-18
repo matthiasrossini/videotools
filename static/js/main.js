@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const loading = document.getElementById('loading');
     const error = document.getElementById('error');
     const results = document.getElementById('results');
+    const timeline = document.getElementById('timeline');
     const clipList = document.getElementById('clipList');
 
     form.addEventListener('submit', function(e) {
@@ -12,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
         loading.classList.remove('d-none');
         error.classList.add('d-none');
         results.classList.add('d-none');
+        timeline.innerHTML = '';
         clipList.innerHTML = '';
 
         fetch('/process', {
@@ -24,6 +26,18 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 results.classList.remove('d-none');
                 
+                // Create timeline
+                data.timeline_frames.forEach((frame, index) => {
+                    const frameElement = document.createElement('div');
+                    frameElement.className = 'timeline-frame';
+                    frameElement.innerHTML = `
+                        <img src="/download_frame/${frame.clip}/${frame.path}" alt="Frame ${index}">
+                        <div class="text-center small">${frame.timestamp.toFixed(2)}s</div>
+                    `;
+                    frameElement.addEventListener('click', () => scrollToClip(frame.clip));
+                    timeline.appendChild(frameElement);
+                });
+                
                 // Create rows with 3 scenes each
                 for (let i = 0; i < data.clips_and_frames.length; i += 3) {
                     const row = document.createElement('div');
@@ -33,6 +47,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         const item = data.clips_and_frames[j];
                         const col = document.createElement('div');
                         col.className = 'col-md-4 mb-3';
+                        col.id = `clip-${item.clip}`;
                         
                         const card = document.createElement('div');
                         card.className = 'card h-100';
@@ -80,6 +95,13 @@ document.addEventListener('DOMContentLoaded', function() {
             error.textContent = `Error: ${err.message}`;
         });
     });
+
+    function scrollToClip(clipName) {
+        const clipElement = document.getElementById(`clip-${clipName}`);
+        if (clipElement) {
+            clipElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
 
     // Cleanup temporary files when leaving the page
     window.addEventListener('beforeunload', function() {

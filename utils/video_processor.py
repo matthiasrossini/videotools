@@ -22,10 +22,12 @@ def process_video(video_path):
     ]
     
     # Extract frames from each clip
+    all_frames = []
     for clip_path in clip_paths:
-        extract_frames(clip_path)
+        frames = extract_frames(clip_path)
+        all_frames.extend(frames)
     
-    return clip_paths
+    return clip_paths, all_frames
 
 def extract_frames(video_path, frames_per_second=1):
     cap = cv2.VideoCapture(video_path)
@@ -39,17 +41,24 @@ def extract_frames(video_path, frames_per_second=1):
     frames_dir = os.path.splitext(video_path)[0] + "_frames"
     os.makedirs(frames_dir, exist_ok=True)
     
+    frames = []
     while True:
         ret, frame = cap.read()
         if not ret:
             break
         
         if frame_count % frame_interval == 0:
+            timestamp = frame_count / fps
             frame_path = os.path.join(frames_dir, f"frame_{extracted_count:04d}.jpg")
             cv2.imwrite(frame_path, frame)
+            frames.append({
+                'path': frame_path,
+                'timestamp': timestamp,
+                'clip': os.path.basename(video_path)
+            })
             extracted_count += 1
         
         frame_count += 1
     
     cap.release()
-    return frames_dir
+    return frames
