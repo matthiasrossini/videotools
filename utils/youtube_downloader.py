@@ -1,9 +1,22 @@
 import os
 import subprocess
 import yt_dlp
+import shutil
+import tempfile
+import logging
+import re
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class VideoDownloadError(Exception):
     pass
+
+def sanitize_filename(filename):
+    # Remove any characters that are not alphanumeric, underscore, hyphen, or period
+    sanitized = re.sub(r'[^\w\-.]', '_', filename)
+    # Remove any leading or trailing underscores
+    sanitized = sanitized.strip('_')
+    return sanitized
 
 def download_youtube_video(url, output_path, start_time=None, end_time=None):
     ydl_opts = {
@@ -21,7 +34,7 @@ def download_youtube_video(url, output_path, start_time=None, end_time=None):
             info = ydl.extract_info(url, download=True)
             filename = ydl.prepare_filename(info)
         
-        print(f"Downloaded video file: {os.path.abspath(filename)}")
+        logging.info(f"Downloaded video file: {os.path.abspath(filename)}")
         
         if not os.path.exists(filename):
             raise VideoDownloadError(f"Video file not found at {os.path.abspath(filename)}")
@@ -40,29 +53,59 @@ def trim_video(filename, start_time, end_time):
     if not os.path.exists(filename):
         raise VideoDownloadError(f"Input video file not found at {os.path.abspath(filename)}")
 
-    # Build the ffmpeg command to trim the video
-    input_file = os.path.abspath(filename)
-    output_file = os.path.abspath(f"trimmed_{os.path.basename(filename)}")
+    # Sanitize input filename
+    sanitized_input = sanitize_filename(os.path.basename(filename))
+    input_file = os.path.join(os.path.dirname(filename), sanitized_input)
+    os.rename(filename, input_file)
+
+    # Create output directory if it doesn't exist
+    output_dir = os.path.join(os.path.dirname(input_file), "trimmed_temp")
+    try:
+        os.makedirs(output_dir, exist_ok=True)
+        logging.info(f"Output directory created/confirmed: {output_dir}")
+    except OSError as e:
+        raise VideoDownloadError(f"Failed to create output directory: {str(e)}")
+
+    # Sanitize output filename
+    sanitized_output = f"trimmed_{sanitized_input}"
+    output_file = os.path.abspath(os.path.join(output_dir, sanitized_output))
+
     start = f"-ss {start_time}" if start_time is not None else ""
     end = f"-to {end_time}" if end_time is not None else ""
 
     # ffmpeg command for trimming
-    cmd = f"ffmpeg -i '{input_file}' {start} {end} -c copy '{output_file}'"
-    
-    print(f"Executing ffmpeg command: {cmd}")
-    print(f"Input file: {input_file}")
-    print(f"Output file: {output_file}")
-    
+    cmd = f"ffmpeg -i \"{input_file}\" {start} {end} -c copy \"{output_file}\""
+
+    logging.info(f"Executing ffmpeg command: {cmd}")
+    logging.info(f"Input file: {input_file}")
+    logging.info(f"Output file: {output_file}")
+
     try:
         result = subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
-        print(f"ffmpeg command output: {result.stdout}")
-        print(f"ffmpeg command error output: {result.stderr}")
+        logging.info(f"ffmpeg command output: {result.stdout}")
+        logging.info(f"ffmpeg command error output: {result.stderr}")
     except subprocess.CalledProcessError as e:
-        print(f"ffmpeg command failed with error: {e.stderr}")
+        logging.error(f"ffmpeg command failed with error: {e.stderr}")
         raise VideoDownloadError(f"Error trimming video: {e.stderr}")
 
     if not os.path.exists(output_file):
+        logging.error(f"Output file not found at expected location: {output_file}")
+        logging.info(f"Checking if file exists with a different extension...")
+
+        # Check for files with the same name but different extensions
+        base_name = os.path.splitext(sanitized_output)[0]
+        for file in os.listdir(output_dir):
+            if file.startswith(base_name):
+                actual_output_file = os.path.join(output_dir, file)
+                logging.info(f"Found potential output file: {actual_output_file}")
+                return actual_output_file
+
+        # Log contents of the output directory
+        logging.error(f"Contents of output directory {output_dir}:")
+        for file in os.listdir(output_dir):
+            logging.error(f"  {file}")
+
         raise VideoDownloadError(f"Trimmed video file not found at {output_file}")
 
-    print(f"Trimmed video file created: {output_file}")
+    logging.info(f"Trimmed video file created: {output_file}")
     return output_file

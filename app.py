@@ -65,5 +65,25 @@ def cleanup():
             os.rmdir(os.path.join(root, dir))
     return jsonify({'success': True})
 
+@app.route('/test_frame_extraction')
+def test_frame_extraction():
+    try:
+        # Use a short YouTube video for testing
+        test_url = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+        video_path = download_youtube_video(test_url, app.config['UPLOAD_FOLDER'], 0, 10)
+        
+        # Process video and extract frames
+        clip_paths, all_frames, clips_and_frames = process_video(video_path, 0, 10)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Frame extraction test completed successfully',
+            'num_clips': len(clip_paths),
+            'num_frames': len(all_frames),
+            'clips_and_frames': clips_and_frames
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

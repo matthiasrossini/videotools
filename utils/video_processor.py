@@ -51,8 +51,9 @@ def extract_frames(video_path, start_time=None, end_time=None, frames_per_second
     frame_count = 0
     extracted_count = 0
     
-    # Create a directory for frames
-    frames_dir = os.path.splitext(video_path)[0] + "_frames"
+    # Create a directory for frames specific to this clip
+    clip_name = os.path.splitext(os.path.basename(video_path))[0]
+    frames_dir = os.path.join(os.path.dirname(video_path), f"{clip_name}_frames")
     os.makedirs(frames_dir, exist_ok=True)
     
     frames = []
