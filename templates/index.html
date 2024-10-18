@@ -30,13 +30,19 @@
                 <label for="youtube_url" class="form-label">YouTube URL:</label>
                 <input type="url" class="form-control" id="youtube_url" name="youtube_url" required>
             </div>
-            <div class="mb-3">
-                <label for="number_of_clips" class="form-label">Number of Clips:</label>
-                <input type="number" class="form-control" id="number_of_clips" name="number_of_clips" value="5" min="1" max="20">
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="use_custom_settings" name="use_custom_settings">
+                <label class="form-check-label" for="use_custom_settings">Use Custom Settings</label>
             </div>
-            <div class="mb-3">
-                <label for="frames_per_clip" class="form-label">Frames per Clip:</label>
-                <input type="number" class="form-control" id="frames_per_clip" name="frames_per_clip" value="5" min="1" max="20">
+            <div id="custom_settings" style="display: none;">
+                <div class="mb-3">
+                    <label for="number_of_clips" class="form-label">Number of Clips:</label>
+                    <input type="number" class="form-control" id="number_of_clips" name="number_of_clips" value="5" min="1" max="20">
+                </div>
+                <div class="mb-3">
+                    <label for="frames_per_clip" class="form-label">Frames per Clip:</label>
+                    <input type="number" class="form-control" id="frames_per_clip" name="frames_per_clip" value="5" min="1" max="20">
+                </div>
             </div>
             <button type="submit" class="btn btn-primary">Process Video</button>
         </form>

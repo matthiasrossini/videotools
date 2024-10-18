@@ -5,10 +5,22 @@ document.addEventListener('DOMContentLoaded', function() {
     const results = document.getElementById('results');
     const timeline = document.getElementById('timeline');
     const clipList = document.getElementById('clipList');
+    const useCustomSettings = document.getElementById('use_custom_settings');
+    const customSettings = document.getElementById('custom_settings');
+
+    useCustomSettings.addEventListener('change', function() {
+        customSettings.style.display = this.checked ? 'block' : 'none';
+    });
 
     form.addEventListener('submit', function(e) {
         e.preventDefault();
         const formData = new FormData(form);
+        
+        // Only include custom settings if the checkbox is checked
+        if (!useCustomSettings.checked) {
+            formData.delete('number_of_clips');
+            formData.delete('frames_per_clip');
+        }
         
         loading.classList.remove('d-none');
         error.classList.add('d-none');

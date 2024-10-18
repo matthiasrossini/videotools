@@ -2,7 +2,7 @@ import os
 import cv2
 from scenedetect import detect, ContentDetector, split_video_ffmpeg
 
-def process_video(video_path, number_of_clips, frames_per_clip):
+def process_video(video_path, number_of_clips=None, frames_per_clip=None):
     # Detect scenes
     scene_list = detect(video_path, ContentDetector())
     
@@ -19,6 +19,12 @@ def process_video(video_path, number_of_clips, frames_per_clip):
         for f in os.listdir(directory)
         if f.startswith(f"{filename}_scene_") and f.endswith(".mp4")
     ]
+    
+    # If number_of_clips is not specified, use all clips
+    if number_of_clips is None:
+        number_of_clips = len(clip_paths)
+    else:
+        number_of_clips = min(number_of_clips, len(clip_paths))
     
     # Limit the number of clips
     clip_paths = clip_paths[:number_of_clips]
@@ -42,12 +48,15 @@ def process_video(video_path, number_of_clips, frames_per_clip):
     
     return clip_paths, all_frames, clips_and_frames
 
-def extract_frames(video_path, frames_per_clip):
+def extract_frames(video_path, frames_per_clip=None):
     cap = cv2.VideoCapture(video_path)
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     fps = int(cap.get(cv2.CAP_PROP_FPS))
     
-    frame_interval = total_frames // frames_per_clip
+    if frames_per_clip is None:
+        frames_per_clip = min(total_frames, 10)  # Default to 10 frames or total frames if less
+    
+    frame_interval = max(1, total_frames // frames_per_clip)
     
     # Create a directory for frames specific to this clip
     clip_name = os.path.splitext(os.path.basename(video_path))[0]

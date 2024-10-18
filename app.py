@@ -21,8 +21,14 @@ def index():
 @app.route('/process', methods=['POST'])
 def process():
     youtube_url = request.form['youtube_url']
-    number_of_clips = int(request.form.get('number_of_clips', 5))
-    frames_per_clip = int(request.form.get('frames_per_clip', 5))
+    use_custom_settings = request.form.get('use_custom_settings') == 'true'
+    
+    if use_custom_settings:
+        number_of_clips = int(request.form.get('number_of_clips', 5))
+        frames_per_clip = int(request.form.get('frames_per_clip', 5))
+    else:
+        number_of_clips = None
+        frames_per_clip = None
     
     try:
         video_path = download_youtube_video(youtube_url, app.config['UPLOAD_FOLDER'])
