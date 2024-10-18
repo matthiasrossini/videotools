@@ -11,7 +11,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const formData = new FormData(form);
         
         // Add the precise_trim checkbox value to the form data
-        formData.append('precise_trim', document.getElementById('precise_trim').checked);
+        const preciseTrimCheckbox = document.getElementById('precise_trim');
+        if (preciseTrimCheckbox) {
+            formData.append('precise_trim', preciseTrimCheckbox.checked);
+        } else {
+            console.warn("Precise trim checkbox not found, using default value.");
+            formData.append('precise_trim', false);
+        }
 
         loading.classList.remove('d-none');
         error.classList.add('d-none');
