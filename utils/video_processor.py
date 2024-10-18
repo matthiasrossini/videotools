@@ -25,15 +25,18 @@ def process_video(video_path, start_time=None, end_time=None):
     all_frames = []
     clips_and_frames = []
     for clip_path in clip_paths:
-        frames = extract_frames(clip_path, start_time, end_time)
-        all_frames.extend(frames)
-        
-        clip_filename = os.path.basename(clip_path)
-        frame_filenames = [os.path.basename(frame['path']) for frame in frames]
-        clips_and_frames.append({
-            'clip': clip_filename,
-            'frames': frame_filenames
-        })
+        try:
+            frames = extract_frames(clip_path, start_time, end_time)
+            all_frames.extend(frames)
+            
+            clip_filename = os.path.basename(clip_path)
+            frame_filenames = [os.path.basename(frame['path']) for frame in frames]
+            clips_and_frames.append({
+                'clip': clip_filename,
+                'frames': frame_filenames
+            })
+        except Exception as e:
+            print(f"Error processing clip {clip_path}: {str(e)}")
     
     return clip_paths, all_frames, clips_and_frames
 
