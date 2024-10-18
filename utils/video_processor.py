@@ -1,9 +1,8 @@
 import os
-import subprocess
 import cv2
 from scenedetect import detect, ContentDetector, split_video_ffmpeg
 
-def process_video(video_path, start_time=None, end_time=None):
+def process_video(video_path, number_of_clips, frames_per_clip):
     # Detect scenes
     scene_list = detect(video_path, ContentDetector())
     
@@ -21,12 +20,15 @@ def process_video(video_path, start_time=None, end_time=None):
         if f.startswith(f"{filename}_scene_") and f.endswith(".mp4")
     ]
     
+    # Limit the number of clips
+    clip_paths = clip_paths[:number_of_clips]
+    
     # Extract frames from each clip
     all_frames = []
     clips_and_frames = []
     for clip_path in clip_paths:
         try:
-            frames = extract_frames(clip_path, start_time, end_time)
+            frames = extract_frames(clip_path, frames_per_clip)
             all_frames.extend(frames)
             
             clip_filename = os.path.basename(clip_path)
@@ -40,16 +42,12 @@ def process_video(video_path, start_time=None, end_time=None):
     
     return clip_paths, all_frames, clips_and_frames
 
-def extract_frames(video_path, start_time=None, end_time=None, frames_per_second=1):
-    print(f"Extracting frames from {video_path}")
-    print(f"Start time: {start_time}, End time: {end_time}")
-
+def extract_frames(video_path, frames_per_clip):
     cap = cv2.VideoCapture(video_path)
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     fps = int(cap.get(cv2.CAP_PROP_FPS))
-    frame_interval = fps // frames_per_second
     
-    frame_count = 0
-    extracted_count = 0
+    frame_interval = total_frames // frames_per_clip
     
     # Create a directory for frames specific to this clip
     clip_name = os.path.splitext(os.path.basename(video_path))[0]
@@ -57,32 +55,20 @@ def extract_frames(video_path, start_time=None, end_time=None, frames_per_second
     os.makedirs(frames_dir, exist_ok=True)
     
     frames = []
-    while True:
+    for i in range(frames_per_clip):
+        frame_position = i * frame_interval
+        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_position)
         ret, frame = cap.read()
-        if not ret:
-            break
-        
-        timestamp = frame_count / fps
-        
-        print(f"Processing frame {frame_count}, timestamp: {timestamp}")
-        
-        if (start_time is None or timestamp >= start_time) and (end_time is None or timestamp <= end_time):
-            if frame_count % frame_interval == 0:
-                frame_path = os.path.join(frames_dir, f"frame_{extracted_count:04d}.jpg")
-                cv2.imwrite(frame_path, frame)
-                frame_info = {
-                    'path': frame_path,
-                    'timestamp': round(timestamp, 2),  # Round to 2 decimal places
-                    'clip': os.path.basename(video_path)
-                }
-                print(f"Extracted frame: {frame_info}")
-                frames.append(frame_info)
-                extracted_count += 1
-        elif end_time is not None and timestamp > end_time:
-            break
-        
-        frame_count += 1
+        if ret:
+            frame_path = os.path.join(frames_dir, f"frame_{i:04d}.jpg")
+            cv2.imwrite(frame_path, frame)
+            timestamp = frame_position / fps
+            frame_info = {
+                'path': frame_path,
+                'timestamp': round(timestamp, 2),
+                'clip': os.path.basename(video_path)
+            }
+            frames.append(frame_info)
     
     cap.release()
-    print(f"Total frames extracted: {len(frames)}")
     return frames

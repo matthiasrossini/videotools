@@ -10,14 +10,6 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         const formData = new FormData(form);
         
-        const preciseTrimCheckbox = document.getElementById('precise_trim');
-        if (preciseTrimCheckbox) {
-            formData.append('precise_trim', preciseTrimCheckbox.checked);
-        } else {
-            console.warn("Precise trim checkbox not found, using default value.");
-            formData.append('precise_trim', false);
-        }
-
         loading.classList.remove('d-none');
         error.classList.add('d-none');
         results.classList.add('d-none');

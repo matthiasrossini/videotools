@@ -1,29 +1,24 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YouTube Video Splitter</title>
-    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
     <style>
-        .card-img-top {
-            height: 100px;
-            object-fit: cover;
-        }
         .timeline-container {
+            display: flex;
             overflow-x: auto;
-            white-space: nowrap;
-            padding: 10px 0;
+            gap: 10px;
+            padding: 10px;
         }
         .timeline-frame {
-            display: inline-block;
-            margin-right: 5px;
-            cursor: pointer;
+            flex: 0 0 auto;
+            text-align: center;
         }
         .timeline-frame img {
-            width: 80px;
-            height: 45px;
-            object-fit: cover;
+            max-width: 100px;
+            height: auto;
         }
     </style>
 </head>
@@ -32,36 +27,16 @@
         <h1 class="mb-4">YouTube Video Splitter</h1>
         <form id="videoForm">
             <div class="mb-3">
-                <label for="youtube_url" class="form-label">YouTube Video URL:</label>
-                <input type="text" class="form-control" id="youtube_url" name="youtube_url" required>
+                <label for="youtube_url" class="form-label">YouTube URL:</label>
+                <input type="url" class="form-control" id="youtube_url" name="youtube_url" required>
             </div>
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Start Time:</label>
-                    <div class="row">
-                        <div class="col">
-                            <input type="number" class="form-control" id="start_minutes" name="start_minutes" min="0" placeholder="Minutes">
-                        </div>
-                        <div class="col">
-                            <input type="number" class="form-control" id="start_seconds" name="start_seconds" min="0" max="59" placeholder="Seconds">
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">End Time:</label>
-                    <div class="row">
-                        <div class="col">
-                            <input type="number" class="form-control" id="end_minutes" name="end_minutes" min="0" placeholder="Minutes">
-                        </div>
-                        <div class="col">
-                            <input type="number" class="form-control" id="end_seconds" name="end_seconds" min="0" max="59" placeholder="Seconds">
-                        </div>
-                    </div>
-                </div>
+            <div class="mb-3">
+                <label for="number_of_clips" class="form-label">Number of Clips:</label>
+                <input type="number" class="form-control" id="number_of_clips" name="number_of_clips" value="5" min="1" max="20">
             </div>
-            <div class="mb-3 form-check">
-                <input type="checkbox" class="form-check-input" id="precise_trim" name="precise_trim">
-                <label class="form-check-label" for="precise_trim">Precise Trimming (slower but more accurate)</label>
+            <div class="mb-3">
+                <label for="frames_per_clip" class="form-label">Frames per Clip:</label>
+                <input type="number" class="form-control" id="frames_per_clip" name="frames_per_clip" value="5" min="1" max="20">
             </div>
             <button type="submit" class="btn btn-primary">Process Video</button>
         </form>

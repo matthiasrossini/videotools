@@ -21,26 +21,12 @@ def index():
 @app.route('/process', methods=['POST'])
 def process():
     youtube_url = request.form['youtube_url']
-    
-    start_minutes = request.form.get('start_minutes', type=int)
-    start_seconds = request.form.get('start_seconds', type=int)
-    end_minutes = request.form.get('end_minutes', type=int)
-    end_seconds = request.form.get('end_seconds', type=int)
-    
-    start_time = None
-    end_time = None
-    
-    if start_minutes is not None or start_seconds is not None:
-        start_time = (start_minutes or 0) * 60 + (start_seconds or 0)
-    
-    if end_minutes is not None or end_seconds is not None:
-        end_time = (end_minutes or 0) * 60 + (end_seconds or 0)
-    
-    precise_trim = request.form.get('precise_trim') == 'true'
+    number_of_clips = int(request.form.get('number_of_clips', 5))
+    frames_per_clip = int(request.form.get('frames_per_clip', 5))
     
     try:
-        video_path = download_youtube_video(youtube_url, app.config['UPLOAD_FOLDER'], start_time, end_time, precise_trim)
-        clip_paths, all_frames, clips_and_frames = process_video(video_path, start_time, end_time)
+        video_path = download_youtube_video(youtube_url, app.config['UPLOAD_FOLDER'])
+        clip_paths, all_frames, clips_and_frames = process_video(video_path, number_of_clips, frames_per_clip)
         
         all_frames.sort(key=lambda x: x['timestamp'])
         
@@ -66,7 +52,7 @@ def download(filename):
 
 @app.route('/download_frame/<clip_name>/<frame_name>')
 def download_frame(clip_name, frame_name):
-    frames_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'trimmed_temp', f"trimmed_{clip_name}_frames")
+    frames_dir = os.path.join(app.config['UPLOAD_FOLDER'], f"{clip_name}_frames")
     file_path = os.path.join(frames_dir, frame_name)
     logging.info(f"Attempting to serve frame: {file_path}")
     
