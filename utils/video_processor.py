@@ -53,7 +53,7 @@ def extract_frames(video_path, frames_per_second=1):
             cv2.imwrite(frame_path, frame)
             frames.append({
                 'path': frame_path,
-                'timestamp': timestamp,
+                'timestamp': round(timestamp, 2),  # Round to 2 decimal places
                 'clip': os.path.basename(video_path)
             })
             extracted_count += 1

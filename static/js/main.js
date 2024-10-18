@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     frameElement.className = 'timeline-frame';
                     frameElement.innerHTML = `
                         <img src="/download_frame/${frame.clip}/${frame.path}" alt="Frame ${index}">
-                        <div class="text-center small">${frame.timestamp.toFixed(2)}s</div>
+                        <div class="text-center small">${frame.timestamp}s</div>
                     `;
                     frameElement.addEventListener('click', () => scrollToClip(frame.clip));
                     timeline.appendChild(frameElement);
@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         card.className = 'card h-100';
                         card.innerHTML = `
                             <div class="card-header">
-                                <h5 class="card-title mb-0">${item.clip}</h5>
+                                <h6 class="card-title mb-0">${item.clip}</h6>
                             </div>
                             <div class="card-body">
                                 <a href="/download/${item.clip}" class="btn btn-primary btn-sm mb-2">Download Clip</a>
