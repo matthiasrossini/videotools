@@ -35,6 +35,16 @@
                 <label for="youtube_url" class="form-label">YouTube Video URL:</label>
                 <input type="text" class="form-control" id="youtube_url" name="youtube_url" required>
             </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="start_time" class="form-label">Start Time (seconds):</label>
+                    <input type="number" class="form-control" id="start_time" name="start_time" min="0" step="1">
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="end_time" class="form-label">End Time (seconds):</label>
+                    <input type="number" class="form-control" id="end_time" name="end_time" min="0" step="1">
+                </div>
+            </div>
             <button type="submit" class="btn btn-primary">Process Video</button>
         </form>
         <div id="loading" class="mt-3 d-none">

@@ -18,13 +18,15 @@ def index():
 @app.route('/process', methods=['POST'])
 def process():
     youtube_url = request.form['youtube_url']
+    start_time = request.form.get('start_time', type=float)
+    end_time = request.form.get('end_time', type=float)
     
     try:
         # Download YouTube video
-        video_path = download_youtube_video(youtube_url, app.config['UPLOAD_FOLDER'])
+        video_path = download_youtube_video(youtube_url, app.config['UPLOAD_FOLDER'], start_time, end_time)
         
         # Process video and get clip paths and all frames
-        clip_paths, all_frames = process_video(video_path)
+        clip_paths, all_frames = process_video(video_path, start_time, end_time)
         
         # Sort all frames by timestamp
         all_frames.sort(key=lambda x: x['timestamp'])
