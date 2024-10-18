@@ -23,14 +23,38 @@ document.addEventListener('DOMContentLoaded', function() {
             loading.classList.add('d-none');
             if (data.success) {
                 results.classList.remove('d-none');
-                data.clips.forEach(clip => {
-                    const li = document.createElement('li');
-                    li.className = 'list-group-item';
-                    const link = document.createElement('a');
-                    link.href = `/download/${clip}`;
-                    link.textContent = clip;
-                    li.appendChild(link);
-                    clipList.appendChild(li);
+                data.clips_and_frames.forEach((item, index) => {
+                    const accordionItem = document.createElement('div');
+                    accordionItem.className = 'accordion-item';
+                    accordionItem.innerHTML = `
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${index}">
+                                ${item.clip}
+                            </button>
+                        </h2>
+                        <div id="collapse${index}" class="accordion-collapse collapse">
+                            <div class="accordion-body">
+                                <a href="/download/${item.clip}" class="btn btn-primary mb-3">Download Clip</a>
+                                <div class="row row-cols-1 row-cols-md-3 g-4" id="frames${index}"></div>
+                            </div>
+                        </div>
+                    `;
+                    clipList.appendChild(accordionItem);
+
+                    const framesContainer = document.getElementById(`frames${index}`);
+                    item.frames.forEach(frame => {
+                        const frameCol = document.createElement('div');
+                        frameCol.className = 'col';
+                        frameCol.innerHTML = `
+                            <div class="card">
+                                <img src="/download_frame/${item.clip}/${frame}" class="card-img-top" alt="${frame}">
+                                <div class="card-body">
+                                    <a href="/download_frame/${item.clip}/${frame}" class="btn btn-sm btn-secondary">Download Frame</a>
+                                </div>
+                            </div>
+                        `;
+                        framesContainer.appendChild(frameCol);
+                    });
                 });
             } else {
                 throw new Error(data.error);

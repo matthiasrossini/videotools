@@ -1,5 +1,6 @@
 import os
 import subprocess
+import cv2
 from scenedetect import detect, ContentDetector, split_video_ffmpeg
 
 def process_video(video_path):
@@ -20,5 +21,35 @@ def process_video(video_path):
         if f.startswith(f"{filename}_scene_") and f.endswith(".mp4")
     ]
     
+    # Extract frames from each clip
+    for clip_path in clip_paths:
+        extract_frames(clip_path)
+    
     return clip_paths
 
+def extract_frames(video_path, frames_per_second=1):
+    cap = cv2.VideoCapture(video_path)
+    fps = int(cap.get(cv2.CAP_PROP_FPS))
+    frame_interval = fps // frames_per_second
+    
+    frame_count = 0
+    extracted_count = 0
+    
+    # Create a directory for frames
+    frames_dir = os.path.splitext(video_path)[0] + "_frames"
+    os.makedirs(frames_dir, exist_ok=True)
+    
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        
+        if frame_count % frame_interval == 0:
+            frame_path = os.path.join(frames_dir, f"frame_{extracted_count:04d}.jpg")
+            cv2.imwrite(frame_path, frame)
+            extracted_count += 1
+        
+        frame_count += 1
+    
+    cap.release()
+    return frames_dir

@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, send_file, jsonify
+from flask import Flask, render_template, request, send_file, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
 from utils.youtube_downloader import download_youtube_video
 from utils.video_processor import process_video
@@ -26,10 +26,18 @@ def process():
         # Process video and get clip paths
         clip_paths = process_video(video_path)
         
-        # Create a list of clip filenames
-        clip_filenames = [os.path.basename(path) for path in clip_paths]
+        # Create a list of clip filenames and their corresponding frame directories
+        clips_and_frames = []
+        for clip_path in clip_paths:
+            clip_filename = os.path.basename(clip_path)
+            frames_dir = os.path.splitext(clip_path)[0] + "_frames"
+            frame_filenames = [f for f in os.listdir(frames_dir) if f.endswith('.jpg')]
+            clips_and_frames.append({
+                'clip': clip_filename,
+                'frames': frame_filenames
+            })
         
-        return jsonify({'success': True, 'clips': clip_filenames})
+        return jsonify({'success': True, 'clips_and_frames': clips_and_frames})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
@@ -37,12 +45,18 @@ def process():
 def download(filename):
     return send_file(os.path.join(app.config['UPLOAD_FOLDER'], filename), as_attachment=True)
 
+@app.route('/download_frame/<clip_name>/<frame_name>')
+def download_frame(clip_name, frame_name):
+    frames_dir = os.path.splitext(os.path.join(app.config['UPLOAD_FOLDER'], clip_name))[0] + "_frames"
+    return send_from_directory(frames_dir, frame_name, as_attachment=True)
+
 @app.route('/cleanup', methods=['POST'])
 def cleanup():
-    for file in os.listdir(app.config['UPLOAD_FOLDER']):
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], file)
-        if os.path.isfile(file_path):
-            os.unlink(file_path)
+    for root, dirs, files in os.walk(app.config['UPLOAD_FOLDER'], topdown=False):
+        for file in files:
+            os.unlink(os.path.join(root, file))
+        for dir in dirs:
+            os.rmdir(os.path.join(root, dir))
     return jsonify({'success': True})
 
 if __name__ == '__main__':
