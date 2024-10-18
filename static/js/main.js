@@ -9,6 +9,9 @@ document.addEventListener('DOMContentLoaded', function() {
     form.addEventListener('submit', function(e) {
         e.preventDefault();
         const formData = new FormData(form);
+        
+        // Add the precise_trim checkbox value to the form data
+        formData.append('precise_trim', document.getElementById('precise_trim').checked);
 
         loading.classList.remove('d-none');
         error.classList.add('d-none');
@@ -22,12 +25,12 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => response.json())
         .then(data => {
-            console.log('Received data:', data);  // Add this line for debugging
+            console.log('Received data:', data);
             loading.classList.add('d-none');
             if (data.success) {
                 results.classList.remove('d-none');
                 
-                console.log('Creating timeline with frames:', data.timeline_frames);  // Add this line for debugging
+                console.log('Creating timeline with frames:', data.timeline_frames);
                 // Create timeline
                 data.timeline_frames.forEach((frame, index) => {
                     const frameElement = document.createElement('div');
@@ -40,7 +43,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     timeline.appendChild(frameElement);
                 });
                 
-                console.log('Creating clip list with data:', data.clips_and_frames);  // Add this line for debugging
+                console.log('Creating clip list with data:', data.clips_and_frames);
                 // Create rows with 3 scenes each
                 for (let i = 0; i < data.clips_and_frames.length; i += 3) {
                     const row = document.createElement('div');
@@ -93,7 +96,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(err => {
-            console.error('Error:', err);  // Add this line for debugging
+            console.error('Error:', err);
             loading.classList.add('d-none');
             error.classList.remove('d-none');
             error.textContent = `Error: ${err.message}`;

@@ -1,9 +1,12 @@
 import os
 import time
+import logging
 from flask import Flask, render_template, request, send_file, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
 from utils.youtube_downloader import download_youtube_video, VideoDownloadError
 from utils.video_processor import process_video
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'temp'
@@ -35,9 +38,12 @@ def process():
     if end_minutes is not None or end_seconds is not None:
         end_time = (end_minutes or 0) * 60 + (end_seconds or 0)
     
+    # Get the precise_trim parameter
+    precise_trim = request.form.get('precise_trim') == 'true'
+    
     try:
         # Download YouTube video
-        video_path = download_youtube_video(youtube_url, app.config['UPLOAD_FOLDER'], start_time, end_time)
+        video_path = download_youtube_video(youtube_url, app.config['UPLOAD_FOLDER'], start_time, end_time, precise_trim)
         
         # Process video and get clip paths, all frames, and clips_and_frames data
         clip_paths, all_frames, clips_and_frames = process_video(video_path, start_time, end_time)
@@ -68,7 +74,15 @@ def download(filename):
 @app.route('/download_frame/<clip_name>/<frame_name>')
 def download_frame(clip_name, frame_name):
     frames_dir = os.path.splitext(os.path.join(app.config['UPLOAD_FOLDER'], clip_name))[0] + "_frames"
-    return send_from_directory(frames_dir, frame_name, as_attachment=True)
+    file_path = os.path.join(frames_dir, frame_name)
+    logging.info(f"Attempting to serve frame: {file_path}")
+    
+    if os.path.exists(file_path):
+        logging.info(f"Frame file found: {file_path}")
+        return send_from_directory(frames_dir, frame_name, as_attachment=True)
+    else:
+        logging.error(f"Frame file not found: {file_path}")
+        return jsonify({'error': 'Frame not found'}), 404
 
 @app.route('/cleanup', methods=['POST'])
 def cleanup():
