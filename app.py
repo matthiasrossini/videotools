@@ -20,14 +20,20 @@ def index():
 def process():
     youtube_url = request.form['youtube_url']
     
-    # Convert minutes and seconds to total seconds
-    start_minutes = request.form.get('start_minutes', type=int) or 0
-    start_seconds = request.form.get('start_seconds', type=int) or 0
-    end_minutes = request.form.get('end_minutes', type=int) or 0
-    end_seconds = request.form.get('end_seconds', type=int) or 0
+    # Convert minutes and seconds to total seconds, use None if not provided
+    start_minutes = request.form.get('start_minutes', type=int)
+    start_seconds = request.form.get('start_seconds', type=int)
+    end_minutes = request.form.get('end_minutes', type=int)
+    end_seconds = request.form.get('end_seconds', type=int)
     
-    start_time = start_minutes * 60 + start_seconds
-    end_time = end_minutes * 60 + end_seconds
+    start_time = None
+    end_time = None
+    
+    if start_minutes is not None or start_seconds is not None:
+        start_time = (start_minutes or 0) * 60 + (start_seconds or 0)
+    
+    if end_minutes is not None or end_seconds is not None:
+        end_time = (end_minutes or 0) * 60 + (end_seconds or 0)
     
     try:
         # Download YouTube video

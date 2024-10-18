@@ -70,18 +70,25 @@ def trim_video(filename, start_time, end_time):
     sanitized_output = f"trimmed_{sanitized_input}"
     output_file = os.path.abspath(os.path.join(output_dir, sanitized_output))
 
-    start = f"-ss {start_time}" if start_time is not None else ""
-    end = f"-to {end_time}" if end_time is not None else ""
+    # Prepare ffmpeg command
+    cmd = ["ffmpeg", "-i", input_file]
+    
+    if start_time is not None:
+        cmd.extend(["-ss", str(start_time)])
+    
+    if end_time is not None:
+        if start_time is not None and end_time <= start_time:
+            raise VideoDownloadError("End time must be greater than start time")
+        cmd.extend(["-to", str(end_time)])
+    
+    cmd.extend(["-c", "copy", output_file])
 
-    # ffmpeg command for trimming
-    cmd = f"ffmpeg -i \"{input_file}\" {start} {end} -c copy \"{output_file}\""
-
-    logging.info(f"Executing ffmpeg command: {cmd}")
+    logging.info(f"Executing ffmpeg command: {' '.join(cmd)}")
     logging.info(f"Input file: {input_file}")
     logging.info(f"Output file: {output_file}")
 
     try:
-        result = subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
+        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
         logging.info(f"ffmpeg command output: {result.stdout}")
         logging.info(f"ffmpeg command error output: {result.stderr}")
     except subprocess.CalledProcessError as e:
