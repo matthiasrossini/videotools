@@ -47,7 +47,7 @@ def trim_video(filename, start_time, end_time):
     end = f"-to {end_time}" if end_time is not None else ""
 
     # ffmpeg command for trimming
-    cmd = f"ffmpeg -i {input_file} {start} {end} -c copy {output_file}"
+    cmd = f"ffmpeg -i '{input_file}' {start} {end} -c copy '{output_file}'"
     
     print(f"Executing ffmpeg command: {cmd}")
     print(f"Input file: {input_file}")
