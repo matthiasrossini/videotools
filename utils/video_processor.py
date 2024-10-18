@@ -41,6 +41,9 @@ def process_video(video_path, start_time=None, end_time=None):
     return clip_paths, all_frames, clips_and_frames
 
 def extract_frames(video_path, start_time=None, end_time=None, frames_per_second=1):
+    print(f"Extracting frames from {video_path}")
+    print(f"Start time: {start_time}, End time: {end_time}")
+
     cap = cv2.VideoCapture(video_path)
     fps = int(cap.get(cv2.CAP_PROP_FPS))
     frame_interval = fps // frames_per_second
@@ -60,15 +63,19 @@ def extract_frames(video_path, start_time=None, end_time=None, frames_per_second
         
         timestamp = frame_count / fps
         
+        print(f"Processing frame {frame_count}, timestamp: {timestamp}")
+        
         if (start_time is None or timestamp >= start_time) and (end_time is None or timestamp <= end_time):
             if frame_count % frame_interval == 0:
                 frame_path = os.path.join(frames_dir, f"frame_{extracted_count:04d}.jpg")
                 cv2.imwrite(frame_path, frame)
-                frames.append({
+                frame_info = {
                     'path': frame_path,
                     'timestamp': round(timestamp, 2),  # Round to 2 decimal places
                     'clip': os.path.basename(video_path)
-                })
+                }
+                print(f"Extracted frame: {frame_info}")
+                frames.append(frame_info)
                 extracted_count += 1
         elif end_time is not None and timestamp > end_time:
             break
@@ -76,4 +83,5 @@ def extract_frames(video_path, start_time=None, end_time=None, frames_per_second
         frame_count += 1
     
     cap.release()
+    print(f"Total frames extracted: {len(frames)}")
     return frames
