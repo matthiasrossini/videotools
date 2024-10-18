@@ -1,7 +1,7 @@
 import os
 from flask import Flask, render_template, request, send_file, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
-from utils.youtube_downloader import download_youtube_video
+from utils.youtube_downloader import download_youtube_video, VideoDownloadError
 from utils.video_processor import process_video
 
 app = Flask(__name__)
@@ -42,8 +42,10 @@ def process():
                 } for frame in all_frames
             ]
         })
-    except Exception as e:
+    except VideoDownloadError as e:
         return jsonify({'success': False, 'error': str(e)})
+    except Exception as e:
+        return jsonify({'success': False, 'error': f"An unexpected error occurred: {str(e)}"})
 
 @app.route('/download/<filename>')
 def download(filename):
