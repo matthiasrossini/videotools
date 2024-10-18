@@ -22,7 +22,7 @@ def download_youtube_video(url, output_path, start_time=None, end_time=None):
     return filename
 
 def download_range_func(start_time, end_time):
-    def get_ranges(info_dict):
+    def get_ranges(info_dict, __):
         duration = info_dict.get('duration')
         if duration is None:
             return []
