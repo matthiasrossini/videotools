@@ -23,6 +23,10 @@ args = "Test YouTube Downloader"
 task = "workflow.run"
 args = "Test YouTube Downloader with Complex Filename"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Flask Server"
+
 [[workflows.workflow]]
 name = "Start Flask Server"
 author = "agent"
@@ -57,9 +61,25 @@ agentRequireRestartOnSave = false
 task = "shell.exec"
 args = "python3 -c \"from utils.youtube_downloader import download_youtube_video; print(download_youtube_video('https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'temp', 0, 10))\""
 
+[[workflows.workflow]]
+name = "Flask Server"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python main.py"
+waitForPort = 8080
+
 [deployment]
 run = ["sh", "-c", "python main.py"]
 
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 8080
+externalPort = 8080
