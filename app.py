@@ -25,22 +25,11 @@ def process():
         # Download YouTube video
         video_path = download_youtube_video(youtube_url, app.config['UPLOAD_FOLDER'], start_time, end_time)
         
-        # Process video and get clip paths and all frames
-        clip_paths, all_frames = process_video(video_path, start_time, end_time)
+        # Process video and get clip paths, all frames, and clips_and_frames data
+        clip_paths, all_frames, clips_and_frames = process_video(video_path, start_time, end_time)
         
         # Sort all frames by timestamp
         all_frames.sort(key=lambda x: x['timestamp'])
-        
-        # Create a list of clip filenames and their corresponding frame directories
-        clips_and_frames = []
-        for clip_path in clip_paths:
-            clip_filename = os.path.basename(clip_path)
-            frames_dir = os.path.splitext(clip_path)[0] + "_frames"
-            frame_filenames = [f for f in os.listdir(frames_dir) if f.endswith('.jpg')]
-            clips_and_frames.append({
-                'clip': clip_filename,
-                'frames': frame_filenames
-            })
         
         return jsonify({
             'success': True,

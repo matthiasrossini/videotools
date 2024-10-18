@@ -23,11 +23,19 @@ def process_video(video_path, start_time=None, end_time=None):
     
     # Extract frames from each clip
     all_frames = []
+    clips_and_frames = []
     for clip_path in clip_paths:
         frames = extract_frames(clip_path, start_time, end_time)
         all_frames.extend(frames)
+        
+        clip_filename = os.path.basename(clip_path)
+        frame_filenames = [os.path.basename(frame['path']) for frame in frames]
+        clips_and_frames.append({
+            'clip': clip_filename,
+            'frames': frame_filenames
+        })
     
-    return clip_paths, all_frames
+    return clip_paths, all_frames, clips_and_frames
 
 def extract_frames(video_path, start_time=None, end_time=None, frames_per_second=1):
     cap = cv2.VideoCapture(video_path)
