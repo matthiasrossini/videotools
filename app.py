@@ -1,4 +1,5 @@
 import os
+import time
 from flask import Flask, render_template, request, send_file, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
 from utils.youtube_downloader import download_youtube_video, VideoDownloadError
@@ -18,8 +19,15 @@ def index():
 @app.route('/process', methods=['POST'])
 def process():
     youtube_url = request.form['youtube_url']
-    start_time = request.form.get('start_time', type=float)
-    end_time = request.form.get('end_time', type=float)
+    
+    # Convert minutes and seconds to total seconds
+    start_minutes = request.form.get('start_minutes', type=int) or 0
+    start_seconds = request.form.get('start_seconds', type=int) or 0
+    end_minutes = request.form.get('end_minutes', type=int) or 0
+    end_seconds = request.form.get('end_seconds', type=int) or 0
+    
+    start_time = start_minutes * 60 + start_seconds
+    end_time = end_minutes * 60 + end_seconds
     
     try:
         # Download YouTube video
@@ -58,11 +66,18 @@ def download_frame(clip_name, frame_name):
 
 @app.route('/cleanup', methods=['POST'])
 def cleanup():
+    threshold = 30 * 60  # 30 minutes in seconds
+    current_time = time.time()
+    
     for root, dirs, files in os.walk(app.config['UPLOAD_FOLDER'], topdown=False):
         for file in files:
-            os.unlink(os.path.join(root, file))
+            file_path = os.path.join(root, file)
+            if current_time - os.path.getmtime(file_path) > threshold:
+                os.unlink(file_path)
         for dir in dirs:
-            os.rmdir(os.path.join(root, dir))
+            dir_path = os.path.join(root, dir)
+            if not os.listdir(dir_path):
+                os.rmdir(dir_path)
     return jsonify({'success': True})
 
 @app.route('/test_frame_extraction')

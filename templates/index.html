@@ -37,12 +37,26 @@
             </div>
             <div class="row">
                 <div class="col-md-6 mb-3">
-                    <label for="start_time" class="form-label">Start Time (seconds):</label>
-                    <input type="number" class="form-control" id="start_time" name="start_time" min="0" step="1">
+                    <label class="form-label">Start Time:</label>
+                    <div class="row">
+                        <div class="col">
+                            <input type="number" class="form-control" id="start_minutes" name="start_minutes" min="0" placeholder="Minutes">
+                        </div>
+                        <div class="col">
+                            <input type="number" class="form-control" id="start_seconds" name="start_seconds" min="0" max="59" placeholder="Seconds">
+                        </div>
+                    </div>
                 </div>
                 <div class="col-md-6 mb-3">
-                    <label for="end_time" class="form-label">End Time (seconds):</label>
-                    <input type="number" class="form-control" id="end_time" name="end_time" min="0" step="1">
+                    <label class="form-label">End Time:</label>
+                    <div class="row">
+                        <div class="col">
+                            <input type="number" class="form-control" id="end_minutes" name="end_minutes" min="0" placeholder="Minutes">
+                        </div>
+                        <div class="col">
+                            <input type="number" class="form-control" id="end_seconds" name="end_seconds" min="0" max="59" placeholder="Seconds">
+                        </div>
+                    </div>
                 </div>
             </div>
             <button type="submit" class="btn btn-primary">Process Video</button>
