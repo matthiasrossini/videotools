@@ -1,2 +1,2 @@
 # videotools
-this is matthias' attempt to code after years of not coding. please treat with care
+this is matthias first attempt to code after many years of not coding. please treat with care
