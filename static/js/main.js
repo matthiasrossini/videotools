@@ -57,30 +57,15 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                             <div class="card-body">
                                 <a href="/download/${item.clip}" class="btn btn-primary btn-sm mb-2">Download Clip</a>
-                                <div class="row row-cols-3 g-2" id="frames${j}"></div>
+                                <div class="text-center">
+                                    <img src="/download_frame/${item.clip}/${item.frame}" class="img-fluid mb-2" alt="${item.frame}">
+                                    <a href="/download_frame/${item.clip}/${item.frame}" class="btn btn-sm btn-secondary">Download Frame</a>
+                                </div>
                             </div>
                         `;
                         
                         col.appendChild(card);
                         row.appendChild(col);
-                        
-                        // Add frames after the row is appended to ensure the container exists
-                        setTimeout(() => {
-                            const framesContainer = document.getElementById(`frames${j}`);
-                            item.frames.forEach(frame => {
-                                const frameCol = document.createElement('div');
-                                frameCol.className = 'col';
-                                frameCol.innerHTML = `
-                                    <div class="card">
-                                        <img src="/download_frame/${item.clip}/${frame}" class="card-img-top" alt="${frame}">
-                                        <div class="card-body p-1">
-                                            <a href="/download_frame/${item.clip}/${frame}" class="btn btn-sm btn-secondary w-100">Download</a>
-                                        </div>
-                                    </div>
-                                `;
-                                framesContainer.appendChild(frameCol);
-                            });
-                        }, 0);
                     }
                     
                     clipList.appendChild(row);

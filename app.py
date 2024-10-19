@@ -29,15 +29,13 @@ def process():
         # Sort all frames by timestamp
         all_frames.sort(key=lambda x: x['timestamp'])
         
-        # Create a list of clip filenames and their corresponding frame directories
+        # Create a list of clip filenames and their corresponding frame
         clips_and_frames = []
-        for clip_path in clip_paths:
+        for clip_path, frame in zip(clip_paths, all_frames):
             clip_filename = os.path.basename(clip_path)
-            frames_dir = os.path.splitext(clip_path)[0] + "_frames"
-            frame_filenames = [f for f in os.listdir(frames_dir) if f.endswith('.jpg')]
             clips_and_frames.append({
                 'clip': clip_filename,
-                'frames': frame_filenames
+                'frame': os.path.basename(frame['path'])
             })
         
         return jsonify({
