@@ -54,12 +54,21 @@ def extract_frames(video_path, num_frames=5, interval=None):
             _, buffer = cv2.imencode('.jpg', frame)
             frame_data = buffer.tobytes()
             logger.debug(f"Frame {i} data type: {type(frame_data)}")  # Debug log for data type
+            
+            # Generate the full relative path for the frame
+            clip_name = os.path.splitext(os.path.basename(video_path))[0]
+            frame_filename = f"frame_{i}.jpg"
+            frame_path = os.path.join(f"{clip_name}_frames", frame_filename)
+            
             frames.append({
                 'data': frame_data,
                 'timestamp': cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0,
-                'path': f'frame_{i}.jpg',
+                'path': frame_path,
                 'clip': os.path.basename(video_path)
             })
+            
+            # Debug logging for frame path
+            logger.debug(f"Frame {i} path: {frame_path}")
         else:
             logger.warning(f"Failed to read frame {i} from video")
 
@@ -116,6 +125,7 @@ def process_video(video_path, frames_per_clip=5, frame_interval=None):
             frame_path = os.path.join(frames_dir, f"frame_{i}.jpg")
             with open(frame_path, "wb") as f:
                 f.write(frame['data'])
+            logger.debug(f"Saved frame to: {frame_path}")  # Debug logging for frame saving
             frame['path'] = os.path.relpath(frame_path, directory)
 
     if all_frames:

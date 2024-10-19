@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const keyPointsList = document.getElementById('keyPointsList');
     const visualDescription = document.getElementById('visualDescription');
 
-    // Check for form element
     if (!form) {
         console.error("Form element not found!");
         return;
@@ -29,7 +28,6 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         const formData = new FormData(form);
 
-        // Ensure all UI elements exist before trying to manipulate them
         if (loading) loading.classList.remove('d-none');
         if (error) error.classList.add('d-none');
         if (results) results.classList.add('d-none');
@@ -51,13 +49,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const data = await response.json();
 
-            // Hide loading spinner and show results
             if (loading) loading.classList.add('d-none');
 
             if (data.success) {
                 if (results) results.classList.remove('d-none');
 
-                // Populate timeline frames
                 if (data.timeline_frames && timeline) {
                     data.timeline_frames.forEach((frame, index) => {
                         const frameElement = createTimelineFrame(frame, index);
@@ -65,7 +61,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                 }
 
-                // Populate clips and frames
                 if (data.clips_and_frames && clipList) {
                     data.clips_and_frames.forEach(item => {
                         const row = createClipRow(item);
@@ -73,7 +68,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                 }
 
-                // Populate summary
                 if (summaryText) summaryText.textContent = data.summary || 'No summary available.';
                 if (keyPointsList && data.key_points) {
                     data.key_points.forEach(point => {
@@ -101,12 +95,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const frameElement = document.createElement('div');
         frameElement.className = 'timeline-frame';
         const img = document.createElement('img');
-        img.src = `/download_frame/${frame.clip}/${frame.path}`;
-        img.alt = `Frame ${index}`;
-        img.onerror = function() {
-            console.error(`Failed to load image: ${img.src}`);
-            img.src = 'path/to/placeholder-image.jpg'; // Replace with an actual placeholder image
-        };
+        if (frame && frame.path) {
+            img.src = `/download_frame/${frame.clip}/${frame.path}`;
+            img.alt = `Frame ${index}`;
+            img.onerror = function() {
+                console.error(`Failed to load image: ${img.src}`);
+                img.src = '/static/images/placeholder.jpg'; // Replace with an actual placeholder image
+            };
+        } else {
+            console.error(`Invalid frame data for index ${index}`);
+            img.src = '/static/images/placeholder.jpg'; // Replace with an actual placeholder image
+            img.alt = 'Placeholder';
+        }
         frameElement.appendChild(img);
         frameElement.addEventListener('click', () => scrollToClip(frame.clip));
         return frameElement;
@@ -123,7 +123,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="carousel-inner">
                         ${item.frames.map((frame, index) => `
                             <div class="carousel-item ${index === 0 ? 'active' : ''}">
-                                <img src="/download_frame/${item.clip}/${frame}" class="d-block w-100" alt="${frame}" onerror="this.onerror=null; this.src='path/to/placeholder-image.jpg';">
+                                <img src="/download_frame/${item.clip}/${frame}" class="d-block w-100" alt="${frame}" onerror="this.onerror=null; this.src='/static/images/placeholder.jpg';">
                             </div>
                         `).join('')}
                     </div>

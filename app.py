@@ -145,9 +145,12 @@ def download(filename):
 
 @app.route('/download_frame/<clip_name>/<frame_name>')
 def download_frame(clip_name, frame_name):
-    frames_dir = os.path.splitext(os.path.join(app.config['UPLOAD_FOLDER'], clip_name))[0] + "_frames"
+    frames_dir = os.path.join(app.config['UPLOAD_FOLDER'], f"{os.path.splitext(clip_name)[0]}_frames")
+    frame_path = os.path.join(frames_dir, frame_name)
     logger.debug(f"Attempting to serve frame: {frame_name} from directory: {frames_dir}")
-    if os.path.exists(os.path.join(frames_dir, frame_name)):
+    logger.debug(f"Full frame path: {frame_path}")
+    
+    if os.path.exists(frame_path):
         return send_from_directory(frames_dir, frame_name)
     else:
         logger.error(f"Frame not found: {frame_name} in directory: {frames_dir}")
