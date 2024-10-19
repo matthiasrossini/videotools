@@ -10,8 +10,7 @@ def process_video(video_path):
 
     # Detect scenes
     video_manager.start()
-    scene_manager.detect_scenes(frame_source=video_manager)
-    scene_list = scene_manager.get_scene_list()
+    scene_list = detect(video_manager, scene_manager)
 
     # Get the directory and filename
     directory = os.path.dirname(video_path)
