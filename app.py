@@ -6,7 +6,7 @@ from werkzeug.utils import secure_filename
 from utils.youtube_downloader import download_youtube_video, VideoDownloadError
 from utils.video_processor import process_video
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = os.path.abspath('temp')
@@ -26,14 +26,17 @@ def process():
     
     if use_custom_settings:
         number_of_clips = int(request.form.get('number_of_clips', 5))
-        frames_per_clip = int(request.form.get('frames_per_clip', 5))
     else:
         number_of_clips = None
-        frames_per_clip = None
     
     try:
+        logging.info(f"Downloading video from URL: {youtube_url}")
         video_path = download_youtube_video(youtube_url, app.config['UPLOAD_FOLDER'])
-        clip_paths, all_frames, clips_and_frames = process_video(video_path, number_of_clips, frames_per_clip)
+        logging.info(f"Video downloaded successfully: {video_path}")
+        
+        logging.info(f"Processing video: {video_path}")
+        clip_paths, all_frames, clips_and_frames = process_video(video_path, number_of_clips)
+        logging.info(f"Video processing completed. Clips: {len(clip_paths)}, Frames: {len(all_frames)}")
         
         all_frames.sort(key=lambda x: x['timestamp'])
         
@@ -52,7 +55,7 @@ def process():
         logging.error(f"Video download error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)})
     except Exception as e:
-        logging.error(f"An unexpected error occurred: {str(e)}")
+        logging.error(f"An unexpected error occurred: {str(e)}", exc_info=True)
         return jsonify({'success': False, 'error': f"An unexpected error occurred: {str(e)}"})
 
 @app.route('/download/<path:filename>')

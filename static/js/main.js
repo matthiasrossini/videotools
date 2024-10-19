@@ -19,7 +19,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // Only include custom settings if the checkbox is checked
         if (!useCustomSettings.checked) {
             formData.delete('number_of_clips');
-            formData.delete('frames_per_clip');
         }
         
         loading.classList.remove('d-none');
