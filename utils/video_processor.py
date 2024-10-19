@@ -5,7 +5,7 @@ import yt_dlp
 from scenedetect import detect, ContentDetector
 from scenedetect.video_splitter import split_video_ffmpeg
 from youtube_transcript_api import YouTubeTranscriptApi
-from openai import OpenAI
+import openai
 import base64
 import logging
 import re
@@ -16,12 +16,17 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # Ensure OpenAI API key is loaded
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", None)
 if not OPENAI_API_KEY:
-    raise ValueError("OpenAI API key is missing.")
+    logger.error("OpenAI API key is missing.")
+    raise ValueError("OpenAI API key is required to run this script.")
 
 # Initialize OpenAI client with the API key
-openai_client = OpenAI(api_key=OPENAI_API_KEY)
+try:
+    openai.api_key = OPENAI_API_KEY
+except Exception as e:
+    logger.error(f"Failed to initialize OpenAI client: {e}")
+    raise
 
 # Download video from YouTube
 def download_youtube_video(url, output_dir):
@@ -139,15 +144,41 @@ Transcript: {transcript}
 """
 
     try:
-        response = openai_client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": prompt}],
+        response = openai.Completion.create(
+            model="gpt-4",
+            prompt=prompt,
+            max_tokens=150
         )
-        summary = response.choices[0].message.content
+        summary = response.choices[0].text.strip()
         return summary
-    except Exception as e:
-        logger.error(f"Error generating summary: {e}")
+    except openai.error.OpenAIError as e:
+        logger.error(f"Error generating summary with OpenAI: {e}")
         return f"Error generating summary: {e}"
+    except Exception as e:
+        logger.error(f"Unexpected error with OpenAI: {e}")
+        return f"Unexpected error generating summary: {e}"
+
+# New function to describe frames
+def describe_frames(frames):
+    logger.info("Describing frames")
+    descriptions = []
+    for i, frame in enumerate(frames):
+        encoded_image = base64.b64encode(frame).decode('utf-8')
+        prompt = f"Describe the content of this image frame from a video:"
+
+        try:
+            response = openai.Completion.create(
+                model="gpt-4",
+                prompt=prompt,
+                max_tokens=50
+            )
+            description = response.choices[0].text.strip()
+            descriptions.append(f"Frame {i+1}: {description}")
+        except Exception as e:
+            logger.error(f"Error describing frame {i+1}: {e}")
+            descriptions.append(f"Frame {i+1}: Error in description")
+
+    return descriptions
 
 # Example usage
 if __name__ == "__main__":
@@ -161,8 +192,12 @@ if __name__ == "__main__":
         clip_paths, all_frames = process_video(video_path)
         combined_image = create_combined_image(all_frames)
 
-        transcript = get_youtube_transcript(YouTube(youtube_url).video_id)
+        transcript = get_youtube_transcript(re.search(r"v=([^&]+)", youtube_url).group(1))
         summary = generate_summary(combined_image, transcript)
         print(f"Summary: {summary}")
+
+        frame_descriptions = describe_frames(all_frames)
+        for description in frame_descriptions:
+            print(description)
     else:
         logger.error("Video download failed.")

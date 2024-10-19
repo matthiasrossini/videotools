@@ -58,11 +58,13 @@
                 <input type="number" class="form-control" id="frameInterval" name="frame_interval" placeholder="Enter frame interval (e.g., 30)" min="1">
                 <small class="form-text text-muted">Leave blank for automatic interval selection.</small>
             </div>
-            <!-- Custom Transcript -->
+            <!-- Custom Transcript --> 
+            <!-- 
             <div class="mb-3">
                 <label for="transcript" class="form-label">Custom Transcript (optional):</label>
                 <textarea class="form-control" id="transcript" name="transcript" rows="4" placeholder="Enter custom transcript if available"></textarea>
-            </div>
+            </div> 
+            --> 
             <!-- Submit Button -->
             <button type="submit" class="btn btn-primary">Process Video</button>
         </form>
@@ -165,11 +167,23 @@
                 } else {
                     throw new Error(data.error);
                 }
-            } catch (error) {
-                loading.classList.add('d-none');
-                error.classList.remove('d-none');
-                error.textContent = `Error: ${error.message}`;
+            }catch (error) {
+                // Check if 'loading' element exists before manipulating it
+                if (loading) {
+                    loading.classList.add('d-none');
+                } else {
+                    console.error("Loading element not found.");
+                }
+
+                // Check if 'error' element exists before manipulating it
+                if (error) {
+                    error.classList.remove('d-none');
+                    error.textContent = `Error: ${error.message}`;
+                } else {
+                    console.error("Error element not found.");
+                }
             }
+
         });
 
         function createTimelineFrame(frame, index) {

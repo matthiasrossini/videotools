@@ -28,3 +28,4 @@ websockets==13.1
 Werkzeug==3.0.4
 youtube-transcript-api==0.6.2
 yt-dlp==2024.10.7
+openai==1.52.0
