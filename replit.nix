@@ -7,4 +7,3 @@
     pkgs.openssl
   ];
 }
-

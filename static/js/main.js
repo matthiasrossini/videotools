@@ -5,64 +5,118 @@ document.addEventListener('DOMContentLoaded', function() {
     const results = document.getElementById('results');
     const timeline = document.getElementById('timeline');
     const clipList = document.getElementById('clipList');
+    const summaryContainer = document.getElementById('summaryContainer');
+    const summaryText = document.getElementById('summaryText');
+    const keyPointsList = document.getElementById('keyPointsList');
+    const visualDescription = document.getElementById('visualDescription');
+    const framesTimeline = document.getElementById('framesTimeline');
+    const combinedImage = document.getElementById('combinedImage');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const videoFileContainer = document.getElementById('videoFileContainer');
 
-    // Handle form submission
-    form.addEventListener('submit', function(e) {
+    // Check existence of elements before interacting
+    if (loadingSpinner) {
+        loadingSpinner.style.display = 'none'; // Hide spinner initially
+    }
+
+    form.addEventListener('submit', async function(e) {
         e.preventDefault();
+
         const formData = new FormData(form);
 
-        // Show loading, hide results and error
-        loading.classList.remove('d-none');
-        error.classList.add('d-none');
-        results.classList.add('d-none');
-        timeline.innerHTML = '';
-        clipList.innerHTML = '';
+        // Reset UI elements
+        if (loading) loading.classList.remove('d-none');
+        if (loadingSpinner) loadingSpinner.style.display = 'block';
+        if (error) error.classList.add('d-none');
+        if (results) results.classList.add('d-none');
+        if (timeline) timeline.innerHTML = '';
+        if (clipList) clipList.innerHTML = '';
+        if (framesTimeline) framesTimeline.innerHTML = '';
+        if (combinedImage) combinedImage.src = '';
+        if (summaryText) summaryText.textContent = '';
+        if (keyPointsList) keyPointsList.innerHTML = '';
+        if (visualDescription) visualDescription.textContent = '';
 
-        // Fetch to backend to process the video
-        fetch('/process', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            loading.classList.add('d-none');
+        try {
+            const response = await fetch('/process', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            if (loading) loading.classList.add('d-none');
+            if (loadingSpinner) loadingSpinner.style.display = 'none';
+
             if (data.success) {
-                results.classList.remove('d-none');
+                if (results) results.classList.remove('d-none');
 
-                // Create timeline from frames
-                data.timeline_frames.forEach((frame, index) => {
-                    const frameElement = createTimelineFrame(frame, index);
-                    timeline.appendChild(frameElement);
-                });
-
-                // Create rows with 3 clips each (or fewer if < 3 remain)
-                for (let i = 0; i < data.clips_and_frames.length; i += 3) {
-                    const row = document.createElement('div');
-                    row.className = 'row mb-4';
-
-                    for (let j = i; j < i + 3 && j < data.clips_and_frames.length; j++) {
-                        const item = data.clips_and_frames[j];
-                        const col = document.createElement('div');
-                        col.className = 'col-md-4 mb-3';
-                        col.id = `clip-${item.clip}`;
-
-                        // Create a card for each clip
-                        const card = createClipCard(item);
-                        col.appendChild(card);
-                        row.appendChild(col);
-                    }
-
-                    clipList.appendChild(row);
+                // Populate timeline frames
+                if (data.timeline_frames && timeline) {
+                    data.timeline_frames.forEach((frame, index) => {
+                        const frameElement = createTimelineFrame(frame, index);
+                        timeline.appendChild(frameElement);
+                    });
                 }
+
+                // Populate clips and frames
+                if (data.clips_and_frames && clipList) {
+                    data.clips_and_frames.forEach(item => {
+                        const col = createClipCard(item);
+                        clipList.appendChild(col);
+                    });
+                }
+
+                // Display frames in the timeline (if present)
+                if (data.frames && framesTimeline) {
+                    data.frames.forEach((frame, index) => {
+                        const frameImg = document.createElement('img');
+                        frameImg.src = `data:image/jpeg;base64,${frame}`;
+                        frameImg.alt = `Frame ${index + 1}`;
+                        frameImg.className = 'img-thumbnail';
+                        frameImg.style.width = `${100 / data.frames.length}%`;
+                        framesTimeline.appendChild(frameImg);
+                    });
+                }
+
+                // Display combined image
+                if (combinedImage && data.combined_image) {
+                    combinedImage.src = `data:image/jpeg;base64,${data.combined_image}`;
+                }
+
+                // Populate summary information
+                if (summaryText && data.summary) {
+                    summaryText.textContent = data.summary;
+                }
+                if (keyPointsList && data.key_points) {
+                    data.key_points.forEach(point => {
+                        const listItem = document.createElement('li');
+                        listItem.textContent = point;
+                        keyPointsList.appendChild(listItem);
+                    });
+                }
+                if (visualDescription && data.visual_description) {
+                    visualDescription.textContent = data.visual_description;
+                }
+
             } else {
                 throw new Error(data.error);
             }
-        })
-        .catch(err => {
-            loading.classList.add('d-none');
-            error.classList.remove('d-none');
-            error.textContent = `Error: ${err.message}`;
-        });
+        } catch (err) {
+            if (loading) loading.classList.add('d-none');
+            if (loadingSpinner) loadingSpinner.style.display = 'none';
+            if (error) {
+                error.classList.remove('d-none');
+                error.textContent = `Error: ${err.message}`;
+            }
+            if (summaryContainer) {
+                summaryContainer.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+            }
+            console.error('Error:', err);
+        }
     });
 
     // Helper function to create a timeline frame
@@ -78,6 +132,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Helper function to create a clip card
     function createClipCard(item) {
+        const col = document.createElement('div');
+        col.className = 'col-md-4 mb-3';
+        col.id = `clip-${item.clip}`;
+
         const card = document.createElement('div');
         card.className = 'card h-100';
         card.innerHTML = `
@@ -88,7 +146,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 <a href="/download_frame/${item.clip}/${item.frame}" class="btn btn-secondary btn-sm">Download Frame</a>
             </div>
         `;
-        return card;
+        col.appendChild(card);
+        return col;
     }
 
     // Scroll to the selected clip when clicked on the timeline frame
@@ -103,4 +162,16 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('beforeunload', function() {
         fetch('/cleanup', { method: 'POST' });
     });
+
+    // Show/hide file upload based on YouTube URL input
+    const youtubeUrlInput = document.getElementById('youtube_url');
+    if (youtubeUrlInput) {
+        youtubeUrlInput.addEventListener('input', function() {
+            if (this.value.trim() !== '') {
+                if (videoFileContainer) videoFileContainer.style.display = 'none';
+            } else {
+                if (videoFileContainer) videoFileContainer.style.display = 'block';
+            }
+        });
+    }
 });

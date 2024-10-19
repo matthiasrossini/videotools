@@ -1,10 +1,29 @@
 import os
 import cv2
+import numpy as np
 import yt_dlp
 from scenedetect import detect, ContentDetector
 from scenedetect.video_splitter import split_video_ffmpeg
+from youtube_transcript_api import YouTubeTranscriptApi
+from openai import OpenAI
+import base64
+import logging
+import re
+import tempfile
 
-# Step 1: Download the video from YouTube
+# Set up logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+# Ensure OpenAI API key is loaded
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+if not OPENAI_API_KEY:
+    raise ValueError("OpenAI API key is missing.")
+
+# Initialize OpenAI client with the API key
+openai_client = OpenAI(api_key=OPENAI_API_KEY)
+
+# Download video from YouTube
 def download_youtube_video(url, output_dir):
     ydl_opts = {
         'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best',
@@ -14,41 +33,60 @@ def download_youtube_video(url, output_dir):
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
-            return os.path.join(output_dir, f"{info['title']}.mp4")  # Return the path to the downloaded video
+            return os.path.join(output_dir, f"{info['title']}.mp4")
     except Exception as e:
-        print(f"Error downloading video: {e}")
+        logger.error(f"Error downloading video: {e}")
         return None
 
-# Step 2: Process the video, detect scenes, and split it into sub-scenes
-def process_video(video_path):
-    print(f"Processing video: {video_path}")
+# Extract frames from a video
+def extract_frames(video_path, num_frames=5, interval=None):
+    logger.info(f"Extracting frames from video: {video_path}")
+    cap = cv2.VideoCapture(video_path)
+    frames = []
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    # Detect scenes
+    if interval is None:
+        interval = total_frames // num_frames
+    else:
+        num_frames = min(num_frames, total_frames // interval)
+
+    for i in range(num_frames):
+        frame_position = i * interval
+        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_position)
+        ret, frame = cap.read()
+        if ret:
+            _, buffer = cv2.imencode('.jpg', frame)
+            frames.append(buffer.tobytes())
+        else:
+            logger.warning(f"Failed to read frame {i} from video")
+
+    cap.release()
+    logger.info(f"Extracted {len(frames)} frames from video")
+    return frames
+
+# Split video into scenes and process frames
+def process_video(video_path, frames_per_clip=10):
+    logger.info(f"Processing video: {video_path}")
     try:
         scene_list = detect(video_path, ContentDetector())
-        print(f"Detected scenes: {scene_list}")
     except Exception as e:
-        print(f"Error detecting scenes: {e}")
+        logger.error(f"Error detecting scenes: {e}")
         return [], []
 
-    # If no scenes are detected or only one scene exists, process the entire video as one clip
     if len(scene_list) <= 1:
-        print("Only one scene detected or no scenes found, treating the entire video as one scene.")
+        logger.info("Only one scene detected, processing entire video.")
         scene_list = [(0, None)]
 
-    # Split the video into sub-scenes
     directory = os.path.dirname(video_path)
     filename = os.path.splitext(os.path.basename(video_path))[0]
     output_file_template = os.path.join(directory, f"{filename}_scene_$SCENE_NUMBER.mp4")
 
     try:
         split_video_ffmpeg(video_path, scene_list, output_file_template=output_file_template)
-        print(f"Video successfully split into scenes. Output template: {output_file_template}")
     except Exception as e:
-        print(f"Error splitting video: {e}")
+        logger.error(f"Error splitting video: {e}")
         return [], []
 
-    # Collect the generated sub-scene clips
     clip_paths = [
         os.path.join(directory, f)
         for f in os.listdir(directory)
@@ -56,82 +94,75 @@ def process_video(video_path):
     ]
 
     if not clip_paths:
-        print(f"No sub-scenes generated. Using original video: {video_path}")
-        clip_paths = [video_path]  # Use the original video if no scenes were split
+        clip_paths = [video_path]
 
-    # Proceed to frame extraction
     all_frames = []
     for clip_path in clip_paths:
-        frames = extract_frames(clip_path)
+        frames = extract_frames(clip_path, frames_per_clip)
         all_frames.extend(frames)
 
     return clip_paths, all_frames
 
-# Step 3: Extract frames from each sub-scene
-def extract_frames(video_path, frames_per_clip=10):
-    cap = cv2.VideoCapture(video_path)
-    frames = []
+# Create a combined image from frames
+def create_combined_image(frames):
+    decoded_frames = [cv2.imdecode(np.frombuffer(frame, np.uint8), cv2.IMREAD_COLOR) for frame in frames]
+    heights = [frame.shape[0] for frame in decoded_frames]
+    max_height = max(heights)
+    total_width = sum(frame.shape[1] for frame in decoded_frames)
 
-    if not cap.isOpened():
-        print(f"Error: Could not open video file {video_path}")
-        return frames
+    combined_image = np.zeros((max_height, total_width, 3), dtype=np.uint8)
+    current_x = 0
+    for frame in decoded_frames:
+        h, w = frame.shape[:2]
+        combined_image[0:h, current_x:current_x + w] = frame
+        current_x += w
 
-    # Get the total number of frames
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    return cv2.imencode('.jpg', combined_image)[1].tobytes()
 
-    if total_frames == 0:
-        print(f"Error: Video file {video_path} has no frames")
-        cap.release()
-        return frames
+# Generate transcript using YouTubeTranscriptApi
+def get_youtube_transcript(video_id):
+    try:
+        transcript = YouTubeTranscriptApi.get_transcript(video_id)
+        return " ".join([entry['text'] for entry in transcript])
+    except Exception as e:
+        logger.error(f"Error fetching transcript: {e}")
+        return None
 
-    # Calculate the interval between frames
-    interval = max(1, total_frames // frames_per_clip)
+# Summarize video content using OpenAI
+def generate_summary(combined_image, transcript):
+    if combined_image is None:
+        return transcript
 
-    # Create a directory for the frames
-    frames_dir = os.path.splitext(video_path)[0] + "_frames"
-    os.makedirs(frames_dir, exist_ok=True)
+    encoded_image = base64.b64encode(combined_image).decode('utf-8')
+    prompt = f"""Based on the following image of video frames and transcript, provide a concise summary:
+Transcript: {transcript}
+"""
 
-    for i in range(frames_per_clip):
-        frame_position = i * interval
-        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_position)
-        ret, frame = cap.read()
+    try:
+        response = openai_client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": prompt}],
+        )
+        summary = response.choices[0].message.content
+        return summary
+    except Exception as e:
+        logger.error(f"Error generating summary: {e}")
+        return f"Error generating summary: {e}"
 
-        if ret:
-            frame_path = os.path.join(frames_dir, f"frame_{i:04d}.jpg")
-            cv2.imwrite(frame_path, frame)
-
-            # Get the timestamp for the frame
-            timestamp = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
-            frames.append({
-                'path': frame_path,
-                'timestamp': round(timestamp, 2),
-                'clip': os.path.basename(video_path)
-            })
-        else:
-            print(f"Error: Could not read frame at position {frame_position} for clip: {video_path}")
-
-    cap.release()
-    return frames
-
-# Example usage:
-def main():
+# Example usage
+if __name__ == "__main__":
     youtube_url = "https://www.youtube.com/watch?v=QC8iQqtG0hg"
     output_dir = "downloads"
 
-    # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
-
-    # Download the video
     video_path = download_youtube_video(youtube_url, output_dir)
+
     if video_path:
-        # Process the video (split into scenes and extract frames)
         clip_paths, all_frames = process_video(video_path)
+        combined_image = create_combined_image(all_frames)
 
-        # Debug output
-        print(f"Clip paths: {clip_paths}")
-        print(f"Extracted frames: {all_frames}")
+        transcript = get_youtube_transcript(YouTube(youtube_url).video_id)
+        summary = generate_summary(combined_image, transcript)
+        print(f"Summary: {summary}")
     else:
-        print("Failed to download or process the video.")
-
-if __name__ == "__main__":
-    main()
+        logger.error("Video download failed.")

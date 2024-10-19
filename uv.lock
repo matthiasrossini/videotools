@@ -553,6 +553,10 @@ dependencies = [
     { name = "psycopg2-binary" },
     { name = "scenedetect" },
     { name = "yt-dlp" },
+    { name = "openai" },  # Added OpenAI since you're using it for summarization
+    { name = "numpy" },    # Added numpy, useful for processing frames
+    { name = "pytube" },   # Added pytube as you're using it for video downloading
+    { name = "youtube-transcript-api" }  # Added missing package
 ]
 
 [package.metadata]

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube Video Splitter</title>
+    <title>YouTube Video Splitter & Summary Generator</title>
     <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
     <style>
         .card-img-top {
@@ -25,11 +25,11 @@
             height: 45px;
             object-fit: cover;
         }
-        /* New CSS rule to hide the timestamp */
+        /* Hide the timestamp in frames */
         .timeline-frame .text-center.small {
             display: none;
         }
-        /* Updated CSS class for smaller clip name text */
+        /* Style for smaller clip names */
         .clip-name-small {
             font-size: 0.875rem;
             overflow: hidden;
@@ -40,29 +40,176 @@
 </head>
 <body>
     <div class="container mt-5">
-        <h1 class="mb-4">YouTube Video Splitter</h1>
+        <h1 class="mb-4">YouTube Video Splitter & Summary Generator</h1>
         <form id="videoForm">
+            <!-- YouTube URL Input -->
             <div class="mb-3">
                 <label for="youtube_url" class="form-label">YouTube Video URL:</label>
-                <input type="text" class="form-control" id="youtube_url" name="youtube_url" required>
+                <input type="url" class="form-control" id="youtube_url" name="youtube_url" placeholder="Enter YouTube URL" required>
             </div>
+            <!-- Video Upload Option -->
+            <div id="videoFileContainer" class="mb-3">
+                <label for="videoFile" class="form-label">Or upload a video file:</label>
+                <input type="file" class="form-control" id="videoFile" name="video" accept="video/*">
+            </div>
+            <!-- Frame Interval -->
+            <div class="mb-3">
+                <label for="frameInterval" class="form-label">Frame Interval (optional):</label>
+                <input type="number" class="form-control" id="frameInterval" name="frame_interval" placeholder="Enter frame interval (e.g., 30)" min="1">
+                <small class="form-text text-muted">Leave blank for automatic interval selection.</small>
+            </div>
+            <!-- Custom Transcript -->
+            <div class="mb-3">
+                <label for="transcript" class="form-label">Custom Transcript (optional):</label>
+                <textarea class="form-control" id="transcript" name="transcript" rows="4" placeholder="Enter custom transcript if available"></textarea>
+            </div>
+            <!-- Submit Button -->
             <button type="submit" class="btn btn-primary">Process Video</button>
         </form>
+
+        <!-- Loading Spinner -->
         <div id="loading" class="mt-3 d-none">
             <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">Loading...</span>
             </div>
             <span class="ms-2">Processing video, please wait...</span>
         </div>
+
+        <!-- Error Message -->
         <div id="error" class="mt-3 alert alert-danger d-none" role="alert"></div>
+
+        <!-- Results Section -->
         <div id="results" class="mt-3 d-none">
+            <!-- Video Timeline -->
             <h3 class="mb-3">Video Timeline:</h3>
             <div id="timeline" class="timeline-container mb-4"></div>
+
+            <!-- Resulting Clips and Frames -->
             <h3 class="mb-3">Resulting Clips and Frames:</h3>
             <div id="clipList" class="container-fluid p-0"></div>
+
+            <!-- Video Summary Section -->
+            <div id="summaryContainer" class="mt-4">
+                <h3>Video Summary</h3>
+                <p id="summaryText"></p>
+                <h4>Key Points</h4>
+                <ul id="keyPointsList"></ul>
+                <h4>Visual Description</h4>
+                <p id="visualDescription"></p>
+            </div>
         </div>
     </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const form = document.getElementById('videoForm');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const results = document.getElementById('results');
+        const timeline = document.getElementById('timeline');
+        const clipList = document.getElementById('clipList');
+        const summaryText = document.getElementById('summaryText');
+        const keyPointsList = document.getElementById('keyPointsList');
+        const visualDescription = document.getElementById('visualDescription');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(form);
+
+            // Reset UI elements
+            loading.classList.remove('d-none');
+            error.classList.add('d-none');
+            results.classList.add('d-none');
+            timeline.innerHTML = '';
+            clipList.innerHTML = '';
+            summaryText.textContent = '';
+            keyPointsList.innerHTML = '';
+            visualDescription.textContent = '';
+
+            try {
+                const response = await fetch('/process', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                loading.classList.add('d-none');
+
+                if (data.success) {
+                    results.classList.remove('d-none');
+
+                    // Populate timeline frames
+                    data.timeline_frames.forEach((frame, index) => {
+                        const frameElement = createTimelineFrame(frame, index);
+                        timeline.appendChild(frameElement);
+                    });
+
+                    // Populate clips and frames
+                    data.clips_and_frames.forEach(item => {
+                        const row = createClipRow(item);
+                        clipList.appendChild(row);
+                    });
+
+                    // Populate summary
+                    summaryText.textContent = data.summary || 'No summary available.';
+                    data.key_points.forEach(point => {
+                        const listItem = document.createElement('li');
+                        listItem.textContent = point;
+                        keyPointsList.appendChild(listItem);
+                    });
+                    visualDescription.textContent = data.visual_description || 'No visual description available.';
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                loading.classList.add('d-none');
+                error.classList.remove('d-none');
+                error.textContent = `Error: ${error.message}`;
+            }
+        });
+
+        function createTimelineFrame(frame, index) {
+            const frameElement = document.createElement('div');
+            frameElement.className = 'timeline-frame';
+            frameElement.innerHTML = `
+                <img src="/download_frame/${frame.clip}/${frame.path}" alt="Frame ${index}">
+            `;
+            frameElement.addEventListener('click', () => scrollToClip(frame.clip));
+            return frameElement;
+        }
+
+        function createClipRow(item) {
+            const row = document.createElement('div');
+            row.className = 'row mb-4';
+            const col = document.createElement('div');
+            col.className = 'col-md-4 mb-3';
+            col.innerHTML = `
+                <div class="card h-100">
+                    <img src="/download_frame/${item.clip}/${item.frame}" class="card-img-top" alt="${item.frame}">
+                    <div class="card-body">
+                        <p class="card-text clip-name-small">${item.clip}</p>
+                        <a href="/download/${item.clip}" class="btn btn-primary btn-sm me-2">Download Clip</a>
+                        <a href="/download_frame/${item.clip}/${item.frame}" class="btn btn-secondary btn-sm">Download Frame</a>
+                    </div>
+                </div>
+            `;
+            row.appendChild(col);
+            return row;
+        }
+
+        function scrollToClip(clipName) {
+            const clipElement = document.getElementById(`clip-${clipName}`);
+            if (clipElement) {
+                clipElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+    });
+    </script>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="static/js/main.js"></script>
 </body>
 </html>
