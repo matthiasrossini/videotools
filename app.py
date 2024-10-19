@@ -5,7 +5,7 @@ import base64
 import re
 from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
 from werkzeug.utils import secure_filename
-from utils.video_processor import process_video, generate_summary, download_youtube_video, get_youtube_transcript, create_combined_image
+from utils.video_processor import process_video, generate_summary, download_youtube_video, get_youtube_transcript, create_combined_images
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'temp'
@@ -98,28 +98,34 @@ def process():
             {
                 'path': os.path.basename(frame['path']),
                 'timestamp': frame['timestamp'],
-                'clip': frame['clip']  # Clip metadata is now available
+                'clip': frame['clip']
             } for frame in all_frames
         ]
 
         # If using a YouTube URL, get the transcript
         if use_youtube_transcript:
-            video_id = re.search(r"v=([^&]+)", youtube_url).group(1)
-            video_transcript = get_youtube_transcript(video_id)
+            video_id = re.search(r"v=([^&]+)", youtube_url)
+            if video_id:
+                video_transcript = get_youtube_transcript(video_id.group(1))
+            else:
+                video_transcript = None
         else:
             video_transcript = None
 
-        # Generate the combined image from all frames
-        combined_image = create_combined_image([frame['data'] for frame in all_frames])
+        # Debug log to check the data type of frames before combining
+        frame_data_types = [type(frame['data']).__name__ for frame in all_frames]
+
+        # Proceed to create combined images
+        combined_images = create_combined_images([frame['data'] for frame in all_frames])
 
         # Generate summary
-        summary_json = generate_summary(combined_image, video_transcript or transcript)
+        summary_json = generate_summary(combined_images[0], video_transcript or transcript)
 
         summary_data = json.loads(summary_json)
 
         # Encode frames and combined image to base64
         encoded_frames = [base64.b64encode(frame['data']).decode('utf-8') for frame in all_frames]
-        base64_combined_image = base64.b64encode(combined_image).decode('utf-8')
+        base64_combined_image = base64.b64encode(combined_images[0]).decode('utf-8')
 
         return jsonify({
             'success': True,
@@ -129,7 +135,12 @@ def process():
             'combined_image': base64_combined_image,
             'summary': summary_data['summary'],
             'key_points': summary_data['key_points'],
-            'visual_description': summary_data['visual_description']
+            'visual_description': summary_data['visual_description'],
+            'debug_info': {
+                'frame_data_types': frame_data_types,
+                'num_clips': len(clip_paths),
+                'num_frames': len(all_frames)
+            }
         })
 
     except ValueError as e:

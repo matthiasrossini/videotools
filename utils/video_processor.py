@@ -9,7 +9,6 @@ import openai
 import base64
 import logging
 import re
-import tempfile
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -19,11 +18,8 @@ if not OPENAI_API_KEY:
     logger.error("OpenAI API key is missing.")
     raise ValueError("OpenAI API key is required to run this script.")
 
-try:
-    openai.api_key = OPENAI_API_KEY
-except Exception as e:
-    logger.error(f"Failed to initialize OpenAI client: {e}")
-    raise
+# Initialize OpenAI API
+openai.api_key = OPENAI_API_KEY
 
 def download_youtube_video(url, output_dir):
     ydl_opts = {
@@ -56,8 +52,10 @@ def extract_frames(video_path, num_frames=5, interval=None):
         ret, frame = cap.read()
         if ret:
             _, buffer = cv2.imencode('.jpg', frame)
+            frame_data = buffer.tobytes()
+            logger.debug(f"Frame data type: {type(frame_data)}")  # Debug log for data type
             frames.append({
-                'data': buffer.tobytes(),
+                'data': frame_data,
                 'timestamp': cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0,
                 'path': f'frame_{i}.jpg',
                 'clip': os.path.basename(video_path)
@@ -69,7 +67,7 @@ def extract_frames(video_path, num_frames=5, interval=None):
     logger.info(f"Extracted {len(frames)} frames from video")
     return frames
 
-def process_video(video_path, frames_per_clip=10, frame_interval=None):
+def process_video(video_path, frames_per_clip=1, frame_interval=None):
     logger.info(f"Processing video: {video_path}")
     if not os.path.exists(video_path):
         logger.error("Video file not found.")
@@ -115,29 +113,47 @@ def process_video(video_path, frames_per_clip=10, frame_interval=None):
 
     return clip_paths, all_frames
 
-def create_combined_image(frames, max_width=65500, max_height=65500):
-    decoded_frames = [cv2.imdecode(np.frombuffer(frame['data'], np.uint8), cv2.IMREAD_COLOR) for frame in frames]
+def create_combined_images(frames, max_width=65500, max_height=65500, frames_per_image=1):
+    combined_images = []
 
-    heights = [frame.shape[0] for frame in decoded_frames]
-    max_frame_height = max(heights)
-    total_frame_width = sum(frame.shape[1] for frame in decoded_frames)
+    for i in range(0, len(frames), frames_per_image):
+        chunk = frames[i:i + frames_per_image]
 
-    scale_factor = min(max_width / total_frame_width, max_height / max_frame_height, 1.0)
+        decoded_frames = [
+            cv2.imdecode(np.frombuffer(frame['data'], np.uint8), cv2.IMREAD_COLOR)
+            for frame in chunk
+        ]
 
-    if scale_factor < 1.0:
-        max_frame_height = int(max_frame_height * scale_factor)
-        decoded_frames = [cv2.resize(frame, (int(frame.shape[1] * scale_factor), max_frame_height)) for frame in decoded_frames]
-        total_frame_width = sum(frame.shape[1] for frame in decoded_frames)
+        total_width = sum(frame.shape[1] for frame in decoded_frames)
+        max_frame_height = max(frame.shape[0] for frame in decoded_frames)
 
-    combined_image = np.zeros((max_frame_height, total_frame_width, 3), dtype=np.uint8)
+        if total_width > max_width or max_frame_height > max_height:
+            scale_factor = min(max_width / total_width, max_height / max_frame_height)
+            decoded_frames = [
+                cv2.resize(frame, (int(frame.shape[1] * scale_factor), int(frame.shape[0] * scale_factor)))
+                for frame in decoded_frames
+            ]
 
-    current_x = 0
-    for frame in decoded_frames:
-        h, w = frame.shape[:2]
-        combined_image[0:h, current_x:current_x + w] = frame
-        current_x += w
+        heights = [frame.shape[0] for frame in decoded_frames]
+        combined_height = max(heights)
+        total_width = sum(frame.shape[1] for frame in decoded_frames)
 
-    return cv2.imencode('.jpg', combined_image)[1].tobytes()
+        combined_image = np.zeros((combined_height, total_width, 3), dtype=np.uint8)
+        current_x = 0
+        for frame in decoded_frames:
+            h, w = frame.shape[:2]
+            combined_image[0:h, current_x:current_x + w] = frame
+            current_x += w
+
+        combined_images.append(cv2.imencode('.jpg', combined_image)[1].tobytes())
+
+    return combined_images
+
+def describe_frames(frames):
+    descriptions = []
+    for frame in frames:
+        descriptions.append(f"Description of frame captured at {frame['timestamp']} seconds.")
+    return descriptions
 
 def get_youtube_transcript(video_id):
     try:
@@ -150,37 +166,22 @@ def get_youtube_transcript(video_id):
 def generate_summary(combined_image, transcript):
     logger.info("Generating summary using OpenAI API")
 
-    if combined_image is None:
-        return transcript
-
     encoded_image = base64.b64encode(combined_image).decode('utf-8')
-
-    prompt = f"""Based on the following image of video frames and transcript, provide a concise summary of the video content:
-
-Transcript: {transcript}
-
-Please summarize the main points and key visuals from the video. The response should be in JSON format with the following structure:
-{{
-    "summary": "A concise summary of the video content",
-    "key_points": ["Point 1", "Point 2", "Point 3"],
-    "visual_description": "A brief description of the key visuals in the video"
-}}
-"""
-
+    prompt = f"""
+    Based on the following image of video frames and transcript, provide a concise summary of the video content:
+    Transcript: {transcript}
+    """
     try:
-        response = openai.Completion.create(
-            engine="text-davinci-002",
-            prompt=prompt,
+        response = openai.ChatCompletion.create(
+            model="gpt-4", 
+            messages=[{"role": "user", "content": prompt}],
             max_tokens=500
         )
-
-        summary = response.choices[0].text.strip()
-
-        logger.info("Summary generated successfully")
+        summary = response.choices[0]['message']['content'].strip()
         return summary
     except Exception as e:
-        logger.error(f"Error generating summary: {str(e)}", exc_info=True)
-        return f"Error generating summary: {str(e)}"
+        logger.error(f"Error generating summary: {e}")
+        return f"Error generating summary: {e}"
 
 if __name__ == "__main__":
     youtube_url = "https://www.youtube.com/watch?v=QC8iQqtG0hg"
@@ -191,11 +192,11 @@ if __name__ == "__main__":
 
     if video_path:
         clip_paths, all_frames = process_video(video_path)
-        combined_image = create_combined_image(all_frames)
+        combined_images = create_combined_images(all_frames)
 
-        transcript = get_youtube_transcript(
-            re.search(r"v=([^&]+)", youtube_url).group(1))
-        summary = generate_summary(combined_image, transcript)
-        print(f"Summary: {summary}")
+        transcript = get_youtube_transcript(re.search(r"v=([^&]+)", youtube_url).group(1))
+        for combined_image in combined_images:
+            summary = generate_summary(combined_image, transcript)
+            print(f"Summary: {summary}")
     else:
         logger.error("Video download failed.")
