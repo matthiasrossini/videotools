@@ -174,24 +174,29 @@ def get_youtube_transcript(video_id):
         return None
 
 def generate_summary(combined_image, transcript):
-    logger.info("Generating summary using OpenAI API")
+    logger.info('Generating summary using OpenAI API')
 
     encoded_image = base64.b64encode(combined_image).decode('utf-8')
-    prompt = f"""
+    prompt = f'''
     Based on the following image of video frames and transcript, provide a concise summary of the video content:
     Transcript: {transcript}
-    """
+    '''
+    
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-4", 
-            messages=[{"role": "user", "content": prompt}],
+        client = openai.OpenAI()
+        response = client.chat.completions.create(
+            model='gpt-4',
+            messages=[
+                {'role': 'system', 'content': 'You are a helpful assistant.'},
+                {'role': 'user', 'content': prompt}
+            ],
             max_tokens=500
         )
-        summary = response.choices[0]['message']['content'].strip()
+        summary = response.choices[0].message.content.strip()
         return summary
     except Exception as e:
-        logger.error(f"Error generating summary: {e}")
-        return f"Error generating summary: {e}"
+        logger.error(f'Error generating summary: {e}')
+        return f'Error generating summary: {e}'
 
 if __name__ == "__main__":
     youtube_url = "https://www.youtube.com/watch?v=QC8iQqtG0hg"
