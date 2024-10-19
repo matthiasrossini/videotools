@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', function() {
         card.innerHTML = `
             <img src="/download_frame/${item.clip}/${item.frame}" class="card-img-top" alt="${item.frame}">
             <div class="card-body">
-                <p class="card-text">${item.clip}</p>
+                <p class="card-text clip-name-small">${item.clip}</p>
                 <a href="/download/${item.clip}" class="btn btn-primary btn-sm me-2">Download Clip</a>
                 <a href="/download_frame/${item.clip}/${item.frame}" class="btn btn-secondary btn-sm">Download Frame</a>
             </div>
