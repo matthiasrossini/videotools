@@ -1,10 +1,9 @@
 import os
 import cv2
-from scenedetect import detect, ContentDetector, SceneManager
-from scenedetect.video_manager import VideoManager
+from scenedetect import detect, ContentDetector, SceneManager, VideoManager
 
 def process_video(video_path):
-    # Create a VideoManager and SceneManager
+    # Create a VideoManager
     video_manager = VideoManager([video_path])
     scene_manager = SceneManager()
     scene_manager.add_detector(ContentDetector())
@@ -30,18 +29,18 @@ def process_video(video_path):
     # Extract frames from each clip
     all_frames = []
     for clip_path in clip_paths:
-        frame = extract_frame(clip_path)
-        if frame:
-            all_frames.append(frame)
+        frames = extract_frames(clip_path)
+        all_frames.extend(frames)
 
     return clip_paths, all_frames
 
-def extract_frame(video_path):
+def extract_frames(video_path):
     cap = cv2.VideoCapture(video_path)
+    frames = []
 
     if not cap.isOpened():
         print(f"Error: Could not open video file {video_path}")
-        return None
+        return frames
 
     # Get the total number of frames
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -49,37 +48,35 @@ def extract_frame(video_path):
     if total_frames == 0:
         print(f"Error: Video file {video_path} has no frames")
         cap.release()
-        return None
+        return frames
 
-    # Calculate the middle frame
-    middle_frame = total_frames // 2
+    # Extract 10 evenly spaced frames
+    frame_indices = [i * (total_frames // 10) for i in range(10)]
 
-    # Set the frame position to the middle frame
-    cap.set(cv2.CAP_PROP_POS_FRAMES, middle_frame)
+    for i, frame_index in enumerate(frame_indices):
+        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+        ret, frame = cap.read()
 
-    # Read the frame
-    ret, frame = cap.read()
+        if ret:
+            # Create a directory for frames
+            frames_dir = os.path.splitext(video_path)[0] + "_frames"
+            os.makedirs(frames_dir, exist_ok=True)
 
-    if ret:
-        # Create a directory for frames
-        frames_dir = os.path.splitext(video_path)[0] + "_frames"
-        os.makedirs(frames_dir, exist_ok=True)
+            # Save the frame
+            frame_path = os.path.join(frames_dir, f"frame_{i:04d}.jpg")
+            cv2.imwrite(frame_path, frame)
 
-        # Save the frame
-        frame_path = os.path.join(frames_dir, f"frame_middle.jpg")
-        cv2.imwrite(frame_path, frame)
+            # Get the timestamp
+            timestamp = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
 
-        # Get the timestamp
-        timestamp = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
-
-        frame_info = {
-            'path': frame_path,
-            'timestamp': round(timestamp, 2),
-            'clip': os.path.basename(video_path)
-        }
-    else:
-        print(f"Error: Could not read frame from video file {video_path}")
-        frame_info = None
+            frame_info = {
+                'path': frame_path,
+                'timestamp': round(timestamp, 2),
+                'clip': os.path.basename(video_path)
+            }
+            frames.append(frame_info)
+        else:
+            print(f"Error: Could not read frame {frame_index} from video file {video_path}")
 
     cap.release()
-    return frame_info
+    return frames
