@@ -1,6 +1,7 @@
 import os
 import cv2
 from scenedetect import detect, ContentDetector, SceneManager, VideoManager
+from scenedetect.video_splitter import split_video_ffmpeg
 
 def process_video(video_path):
     # Create a VideoManager
@@ -10,20 +11,24 @@ def process_video(video_path):
 
     # Detect scenes
     video_manager.start()
-    scene_list = detect(video_manager, scene_manager)
+    scene_list = detect(video_path, ContentDetector())
 
     # Get the directory and filename
     directory = os.path.dirname(video_path)
     filename = os.path.splitext(os.path.basename(video_path))[0]
 
-    # Split video into clips
-    clip_paths = []
-    for i, scene in enumerate(scene_list):
-        start_time, end_time = scene
-        output_path = os.path.join(directory, f"{filename}_scene_{i+1:03d}.mp4")
-        cmd = f"ffmpeg -i {video_path} -ss {start_time.get_seconds()} -to {end_time.get_seconds()} -c copy {output_path}"
-        os.system(cmd)
-        clip_paths.append(output_path)
+    # Split video into clips based on scenes
+    output_file_template = os.path.join(directory, f"{filename}_scene_$SCENE_NUMBER.mp4")
+    
+    # Process and split video based on scene list
+    split_video_ffmpeg(video_path, scene_list, output_file_template=output_file_template)
+
+    # Get the list of generated clip paths
+    clip_paths = [
+        os.path.join(directory, f)
+        for f in os.listdir(directory)
+        if f.startswith(f"{filename}_scene_") and f.endswith(".mp4")
+    ]
 
     # Extract frames from each clip
     all_frames = []
@@ -33,7 +38,7 @@ def process_video(video_path):
 
     return clip_paths, all_frames
 
-def extract_frames(video_path):
+def extract_frames(video_path, frames_per_clip=10):
     cap = cv2.VideoCapture(video_path)
     frames = []
 
@@ -43,17 +48,18 @@ def extract_frames(video_path):
 
     # Get the total number of frames
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-
+    
     if total_frames == 0:
         print(f"Error: Video file {video_path} has no frames")
         cap.release()
         return frames
 
-    # Extract 10 evenly spaced frames
-    frame_indices = [i * (total_frames // 10) for i in range(10)]
+    # Calculate the interval between frames
+    interval = max(1, total_frames // frames_per_clip)
 
-    for i, frame_index in enumerate(frame_indices):
-        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+    for i in range(frames_per_clip):
+        frame_position = i * interval
+        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_position)
         ret, frame = cap.read()
 
         if ret:
@@ -75,7 +81,7 @@ def extract_frames(video_path):
             }
             frames.append(frame_info)
         else:
-            print(f"Error: Could not read frame {frame_index} from video file {video_path}")
+            print(f"Error: Could not read frame at position {frame_position} for clip: {video_path}")
 
     cap.release()
     return frames
