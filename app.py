@@ -1,5 +1,6 @@
 import os
 import logging
+import shutil
 from flask import Flask, render_template, request, send_file, jsonify
 from werkzeug.utils import secure_filename
 from utils.youtube_downloader import download_youtube_video, VideoDownloadError
@@ -77,5 +78,14 @@ def list_files():
             files.append(os.path.join(root, filename))
     return jsonify({'files': files})
 
+@app.route('/cleanup', methods=['POST'])
+def cleanup():
+    try:
+        shutil.rmtree(app.config['UPLOAD_FOLDER'])
+        os.makedirs(app.config['UPLOAD_FOLDER'])
+        return jsonify({'success': True, 'message': 'Cleanup completed successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': f"An error occurred during cleanup: {str(e)}"}), 500
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080)
+    app.run(host='0.0.0.0', port=5000)

@@ -1,4 +1,6 @@
 from app import app
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+    # Run the app on all available interfaces (0.0.0.0) and port 5000
+    # This allows the application to be accessible externally on port 80
+    app.run(host='0.0.0.0', port=5000)
