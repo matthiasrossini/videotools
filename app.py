@@ -86,17 +86,18 @@ def process():
 
         # Prepare clips and corresponding frames for the response
         clips_and_frames = []
-        for clip_path, frame in zip(clip_paths, all_frames):
+        for clip_path in clip_paths:
             clip_filename = os.path.basename(clip_path)
+            clip_frames = [frame for frame in all_frames if frame['clip'] == clip_filename]
             clips_and_frames.append({
                 'clip': clip_filename,
-                'frame': os.path.basename(frame['path'])
+                'frames': [os.path.basename(frame['path']) for frame in clip_frames]
             })
 
         # Prepare timeline frames
         timeline_frames = [
             {
-                'path': os.path.basename(frame['path']),
+                'path': frame['path'],
                 'timestamp': frame['timestamp'],
                 'clip': frame['clip']
             } for frame in all_frames
@@ -123,16 +124,7 @@ def process():
             return jsonify({'success': False, 'error': 'Failed to create combined images.'})
 
         # Generate summary
-        summary_json = generate_summary(combined_images[0], video_transcript or transcript)
-
-        try:
-            summary_data = json.loads(summary_json)
-        except json.JSONDecodeError:
-            summary_data = {
-                'summary': summary_json,
-                'key_points': [],
-                'visual_description': 'Error parsing summary data'
-            }
+        summary = generate_summary(combined_images[0], video_transcript or transcript)
 
         # Encode frames and combined image to base64
         encoded_frames = [base64.b64encode(frame['data']).decode('utf-8') for frame in all_frames]
@@ -144,9 +136,7 @@ def process():
             'timeline_frames': timeline_frames,
             'frames': encoded_frames,
             'combined_image': base64_combined_image,
-            'summary': summary_data['summary'],
-            'key_points': summary_data.get('key_points', []),
-            'visual_description': summary_data.get('visual_description', ''),
+            'summary': summary,
             'debug_info': {
                 'frame_data_types': frame_data_types,
                 'num_clips': len(clip_paths),

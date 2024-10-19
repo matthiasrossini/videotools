@@ -67,7 +67,7 @@ def extract_frames(video_path, num_frames=5, interval=None):
     logger.info(f"Extracted {len(frames)} frames from video")
     return frames
 
-def process_video(video_path, frames_per_clip=1, frame_interval=None):
+def process_video(video_path, frames_per_clip=5, frame_interval=None):
     logger.info(f"Processing video: {video_path}")
     if not os.path.exists(video_path):
         logger.error("Video file not found.")
@@ -106,6 +106,17 @@ def process_video(video_path, frames_per_clip=1, frame_interval=None):
     for clip_path in clip_paths:
         frames = extract_frames(clip_path, frames_per_clip, interval=frame_interval)
         all_frames.extend(frames)
+        
+        # Save frames for each clip
+        clip_name = os.path.splitext(os.path.basename(clip_path))[0]
+        frames_dir = os.path.join(directory, f"{clip_name}_frames")
+        os.makedirs(frames_dir, exist_ok=True)
+        
+        for i, frame in enumerate(frames):
+            frame_path = os.path.join(frames_dir, f"frame_{i}.jpg")
+            with open(frame_path, "wb") as f:
+                f.write(frame['data'])
+            frame['path'] = os.path.relpath(frame_path, directory)
 
     if all_frames:
         logger.info(f"Sorting {len(all_frames)} frames by timestamp")
@@ -174,26 +185,20 @@ def get_youtube_transcript(video_id):
         return None
 
 def generate_summary(combined_image, transcript):
-    logger.info('Generating summary using OpenAI GPT-4 Vision API')
+    logger.info('Generating summary using OpenAI API with gpt-4o-mini model')
 
     encoded_image = base64.b64encode(combined_image).decode('utf-8')
     
     try:
-        client = openai.OpenAI()
-        response = client.chat.completions.create(
-            model="gpt-4-vision-preview",
+        response = openai.ChatCompletion.create(
+            model='gpt-4o-mini',
             messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": f"Analyze this image and provide a concise summary of the video content. Here's the transcript for additional context: {transcript}"},
-                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"}}
-                    ],
-                }
+                {'role': 'system', 'content': 'You are a helpful assistant.'},
+                {'role': 'user', 'content': f'Analyze this image and provide a concise summary of the video content. Here\'s the transcript for additional context: {transcript}'}
             ],
             max_tokens=500
         )
-        summary = response.choices[0].message.content.strip()
+        summary = response.choices[0].message['content'].strip()
         return summary
     except Exception as e:
         logger.error(f'Error generating summary: {e}')
