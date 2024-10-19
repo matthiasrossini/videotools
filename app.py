@@ -114,14 +114,25 @@ def process():
 
         # Debug log to check the data type of frames before combining
         frame_data_types = [type(frame['data']).__name__ for frame in all_frames]
+        logger.debug(f"Frame data types before combining: {frame_data_types}")
 
         # Proceed to create combined images
         combined_images = create_combined_images([frame['data'] for frame in all_frames])
 
+        if not combined_images:
+            return jsonify({'success': False, 'error': 'Failed to create combined images.'})
+
         # Generate summary
         summary_json = generate_summary(combined_images[0], video_transcript or transcript)
 
-        summary_data = json.loads(summary_json)
+        try:
+            summary_data = json.loads(summary_json)
+        except json.JSONDecodeError:
+            summary_data = {
+                'summary': summary_json,
+                'key_points': [],
+                'visual_description': 'Error parsing summary data'
+            }
 
         # Encode frames and combined image to base64
         encoded_frames = [base64.b64encode(frame['data']).decode('utf-8') for frame in all_frames]
@@ -134,8 +145,8 @@ def process():
             'frames': encoded_frames,
             'combined_image': base64_combined_image,
             'summary': summary_data['summary'],
-            'key_points': summary_data['key_points'],
-            'visual_description': summary_data['visual_description'],
+            'key_points': summary_data.get('key_points', []),
+            'visual_description': summary_data.get('visual_description', ''),
             'debug_info': {
                 'frame_data_types': frame_data_types,
                 'num_clips': len(clip_paths),

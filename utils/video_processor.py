@@ -53,7 +53,7 @@ def extract_frames(video_path, num_frames=5, interval=None):
         if ret:
             _, buffer = cv2.imencode('.jpg', frame)
             frame_data = buffer.tobytes()
-            logger.debug(f"Frame data type: {type(frame_data)}")  # Debug log for data type
+            logger.debug(f"Frame {i} data type: {type(frame_data)}")  # Debug log for data type
             frames.append({
                 'data': frame_data,
                 'timestamp': cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0,
@@ -119,10 +119,20 @@ def create_combined_images(frames, max_width=65500, max_height=65500, frames_per
     for i in range(0, len(frames), frames_per_image):
         chunk = frames[i:i + frames_per_image]
 
+        logger.debug(f"Processing chunk {i // frames_per_image + 1}")
+        for j, frame in enumerate(chunk):
+            logger.debug(f"Frame {j} in chunk {i // frames_per_image + 1} data type: {type(frame)}")
+            if not isinstance(frame, bytes):
+                logger.error(f"Frame {j} in chunk {i // frames_per_image + 1} is not bytes: {type(frame)}")
+
         decoded_frames = [
-            cv2.imdecode(np.frombuffer(frame['data'], np.uint8), cv2.IMREAD_COLOR)
-            for frame in chunk
+            cv2.imdecode(np.frombuffer(frame, np.uint8), cv2.IMREAD_COLOR)
+            for frame in chunk if isinstance(frame, bytes)
         ]
+
+        if not decoded_frames:
+            logger.error(f"No valid frames in chunk {i // frames_per_image + 1}")
+            continue
 
         total_width = sum(frame.shape[1] for frame in decoded_frames)
         max_frame_height = max(frame.shape[0] for frame in decoded_frames)
@@ -192,7 +202,7 @@ if __name__ == "__main__":
 
     if video_path:
         clip_paths, all_frames = process_video(video_path)
-        combined_images = create_combined_images(all_frames)
+        combined_images = create_combined_images([frame['data'] for frame in all_frames])
 
         transcript = get_youtube_transcript(re.search(r"v=([^&]+)", youtube_url).group(1))
         for combined_image in combined_images:
