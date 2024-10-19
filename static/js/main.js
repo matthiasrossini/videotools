@@ -97,3 +97,4 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch('/cleanup', { method: 'POST' });
     });
 });
+
