@@ -6,16 +6,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const timeline = document.getElementById('timeline');
     const clipList = document.getElementById('clipList');
 
+    // Handle form submission
     form.addEventListener('submit', function(e) {
         e.preventDefault();
         const formData = new FormData(form);
 
+        // Show loading, hide results and error
         loading.classList.remove('d-none');
         error.classList.add('d-none');
         results.classList.add('d-none');
         timeline.innerHTML = '';
         clipList.innerHTML = '';
 
+        // Fetch to backend to process the video
         fetch('/process', {
             method: 'POST',
             body: formData
@@ -25,29 +28,30 @@ document.addEventListener('DOMContentLoaded', function() {
             loading.classList.add('d-none');
             if (data.success) {
                 results.classList.remove('d-none');
-                
-                // Create timeline
+
+                // Create timeline from frames
                 data.timeline_frames.forEach((frame, index) => {
                     const frameElement = createTimelineFrame(frame, index);
                     timeline.appendChild(frameElement);
                 });
-                
-                // Create rows with 3 scenes each
+
+                // Create rows with 3 clips each (or fewer if < 3 remain)
                 for (let i = 0; i < data.clips_and_frames.length; i += 3) {
                     const row = document.createElement('div');
                     row.className = 'row mb-4';
-                    
+
                     for (let j = i; j < i + 3 && j < data.clips_and_frames.length; j++) {
                         const item = data.clips_and_frames[j];
                         const col = document.createElement('div');
                         col.className = 'col-md-4 mb-3';
                         col.id = `clip-${item.clip}`;
-                        
+
+                        // Create a card for each clip
                         const card = createClipCard(item);
                         col.appendChild(card);
                         row.appendChild(col);
                     }
-                    
+
                     clipList.appendChild(row);
                 }
             } else {
@@ -61,6 +65,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // Helper function to create a timeline frame
     function createTimelineFrame(frame, index) {
         const frameElement = document.createElement('div');
         frameElement.className = 'timeline-frame';
@@ -71,6 +76,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return frameElement;
     }
 
+    // Helper function to create a clip card
     function createClipCard(item) {
         const card = document.createElement('div');
         card.className = 'card h-100';
@@ -85,6 +91,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return card;
     }
 
+    // Scroll to the selected clip when clicked on the timeline frame
     function scrollToClip(clipName) {
         const clipElement = document.getElementById(`clip-${clipName}`);
         if (clipElement) {
@@ -92,9 +99,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Cleanup temporary files when leaving the page
+    // Clean up temporary files when the user leaves the page
     window.addEventListener('beforeunload', function() {
         fetch('/cleanup', { method: 'POST' });
     });
 });
-

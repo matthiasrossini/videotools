@@ -8,6 +8,7 @@ app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'temp'
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500 MB limit
 
+# Ensure the upload folder exists
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
     os.makedirs(app.config['UPLOAD_FOLDER'])
 
@@ -18,18 +19,27 @@ def index():
 @app.route('/process', methods=['POST'])
 def process():
     youtube_url = request.form['youtube_url']
-    
+
     try:
-        # Download YouTube video
+        # Step 1: Download YouTube video
         video_path = download_youtube_video(youtube_url, app.config['UPLOAD_FOLDER'])
-        
-        # Process video and get clip paths and all frames
+
+        if not video_path:
+            return jsonify({'success': False, 'error': 'Failed to download video.'})
+
+        # Step 2: Process video and get clip paths and all frames
         clip_paths, all_frames = process_video(video_path)
-        
-        # Sort all frames by timestamp
+
+        if not clip_paths:
+            return jsonify({'success': False, 'error': 'No clips generated.'})
+
+        if not all_frames:
+            return jsonify({'success': False, 'error': 'No frames extracted.'})
+
+        # Step 3: Sort all frames by timestamp (if necessary)
         all_frames.sort(key=lambda x: x['timestamp'])
-        
-        # Create a list of clip filenames and their corresponding frame
+
+        # Step 4: Prepare clips and corresponding frames for the response
         clips_and_frames = []
         for clip_path, frame in zip(clip_paths, all_frames):
             clip_filename = os.path.basename(clip_path)
@@ -37,32 +47,39 @@ def process():
                 'clip': clip_filename,
                 'frame': os.path.basename(frame['path'])
             })
-        
+
+        # Step 5: Prepare timeline frames
+        timeline_frames = [
+            {
+                'path': os.path.basename(frame['path']),
+                'timestamp': frame['timestamp'],
+                'clip': frame['clip']
+            } for frame in all_frames
+        ]
+
         return jsonify({
             'success': True,
             'clips_and_frames': clips_and_frames,
-            'timeline_frames': [
-                {
-                    'path': os.path.basename(frame['path']),
-                    'timestamp': frame['timestamp'],
-                    'clip': frame['clip']
-                } for frame in all_frames
-            ]
+            'timeline_frames': timeline_frames
         })
+
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/download/<filename>')
 def download(filename):
+    # Send the requested file to download
     return send_file(os.path.join(app.config['UPLOAD_FOLDER'], filename), as_attachment=True)
 
 @app.route('/download_frame/<clip_name>/<frame_name>')
 def download_frame(clip_name, frame_name):
+    # Locate the frames directory associated with the clip
     frames_dir = os.path.splitext(os.path.join(app.config['UPLOAD_FOLDER'], clip_name))[0] + "_frames"
     return send_from_directory(frames_dir, frame_name, as_attachment=True)
 
 @app.route('/cleanup', methods=['POST'])
 def cleanup():
+    # Clean up the temp folder by removing all files and directories
     for root, dirs, files in os.walk(app.config['UPLOAD_FOLDER'], topdown=False):
         for file in files:
             os.unlink(os.path.join(root, file))
@@ -71,5 +88,5 @@ def cleanup():
     return jsonify({'success': True})
 
 if __name__ == '__main__':
+    # Run the Flask app on the specified port
     app.run(host='0.0.0.0', port=5000)
-
