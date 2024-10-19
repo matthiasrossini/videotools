@@ -5,7 +5,7 @@ import base64
 import re
 from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
 from werkzeug.utils import secure_filename
-from utils.video_processor import process_video, generate_summary
+from utils.video_processor import process_video, generate_summary, download_youtube_video, get_youtube_transcript, create_combined_image
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'temp'
@@ -98,21 +98,27 @@ def process():
             {
                 'path': os.path.basename(frame['path']),
                 'timestamp': frame['timestamp'],
-                'clip': frame['clip']
+                'clip': frame['clip']  # Clip metadata is now available
             } for frame in all_frames
         ]
 
-        # Generate summary if requested
-        frames, combined_image, video_transcript = process_video(video_path, use_youtube_transcript=use_youtube_transcript, frame_interval=frame_interval)
+        # If using a YouTube URL, get the transcript
+        if use_youtube_transcript:
+            video_id = re.search(r"v=([^&]+)", youtube_url).group(1)
+            video_transcript = get_youtube_transcript(video_id)
+        else:
+            video_transcript = None
 
-        summary_json = generate_summary(combined_image, transcript or video_transcript)
-        if summary_json.startswith("Error"):
-            raise ValueError(summary_json)
+        # Generate the combined image from all frames
+        combined_image = create_combined_image([frame['data'] for frame in all_frames])
+
+        # Generate summary
+        summary_json = generate_summary(combined_image, video_transcript or transcript)
 
         summary_data = json.loads(summary_json)
 
         # Encode frames and combined image to base64
-        encoded_frames = [base64.b64encode(frame).decode('utf-8') for frame in frames]
+        encoded_frames = [base64.b64encode(frame['data']).decode('utf-8') for frame in all_frames]
         base64_combined_image = base64.b64encode(combined_image).decode('utf-8')
 
         return jsonify({

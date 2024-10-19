@@ -174,14 +174,6 @@
                 } else {
                     console.error("Loading element not found.");
                 }
-
-                // Check if 'error' element exists before manipulating it
-                if (error) {
-                    error.classList.remove('d-none');
-                    error.textContent = `Error: ${error.message}`;
-                } else {
-                    console.error("Error element not found.");
-                }
             }
 
         });

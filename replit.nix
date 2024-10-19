@@ -1,5 +1,6 @@
 {pkgs}: {
   deps = [
+    pkgs.cacert
     pkgs.ffmpeg
     pkgs.libGLU
     pkgs.libGL
