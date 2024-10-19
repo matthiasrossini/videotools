@@ -12,3 +12,4 @@ dependencies = [
     "yt-dlp>=2024.10.7",
     "opencv-python>=4.10.0.84",
 ]
+
