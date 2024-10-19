@@ -100,9 +100,14 @@ document.addEventListener('DOMContentLoaded', function() {
     function createTimelineFrame(frame, index) {
         const frameElement = document.createElement('div');
         frameElement.className = 'timeline-frame';
-        frameElement.innerHTML = `
-            <img src="/download_frame/${frame.clip}/${frame.path}" alt="Frame ${index}">
-        `;
+        const img = document.createElement('img');
+        img.src = `/download_frame/${frame.clip}/${frame.path}`;
+        img.alt = `Frame ${index}`;
+        img.onerror = function() {
+            console.error(`Failed to load image: ${img.src}`);
+            img.src = 'path/to/placeholder-image.jpg'; // Replace with an actual placeholder image
+        };
+        frameElement.appendChild(img);
         frameElement.addEventListener('click', () => scrollToClip(frame.clip));
         return frameElement;
     }
@@ -114,11 +119,26 @@ document.addEventListener('DOMContentLoaded', function() {
         col.className = 'col-md-4 mb-3';
         col.innerHTML = `
             <div class="card h-100">
-                <img src="/download_frame/${item.clip}/${item.frame}" class="card-img-top" alt="${item.frame}">
+                <div id="clip-${item.clip}" class="carousel slide" data-bs-ride="carousel">
+                    <div class="carousel-inner">
+                        ${item.frames.map((frame, index) => `
+                            <div class="carousel-item ${index === 0 ? 'active' : ''}">
+                                <img src="/download_frame/${item.clip}/${frame}" class="d-block w-100" alt="${frame}" onerror="this.onerror=null; this.src='path/to/placeholder-image.jpg';">
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button class="carousel-control-prev" type="button" data-bs-target="#clip-${item.clip}" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Previous</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#clip-${item.clip}" data-bs-slide="next">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Next</span>
+                    </button>
+                </div>
                 <div class="card-body">
                     <p class="card-text clip-name-small">${item.clip}</p>
                     <a href="/download/${item.clip}" class="btn btn-primary btn-sm me-2">Download Clip</a>
-                    <a href="/download_frame/${item.clip}/${item.frame}" class="btn btn-secondary btn-sm">Download Frame</a>
                 </div>
             </div>
         `;

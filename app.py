@@ -12,11 +12,9 @@ app.config['UPLOAD_FOLDER'] = 'temp'
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500 MB limit
 app.secret_key = os.environ.get("FLASK_SECRET_KEY") or "a secret key"
 
-# Ensure the upload folder exists
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
     os.makedirs(app.config['UPLOAD_FOLDER'])
 
-# Set up logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
@@ -28,13 +26,11 @@ def index():
 def process():
     logger.info("Received request to /process endpoint")
     try:
-        # Input validation
         youtube_url = request.form.get('youtube_url')
         video_file = request.files.get('video')
         transcript = request.form.get('transcript')
         frame_interval = request.form.get('frame_interval')
 
-        # Validate frame interval
         if frame_interval:
             try:
                 frame_interval = int(frame_interval)
@@ -45,9 +41,7 @@ def process():
         else:
             frame_interval = None
 
-        # Handle YouTube URL or uploaded video
         if youtube_url:
-            # Validate YouTube URL
             youtube_regex = r'^(https?://)?(www\.)?(youtube\.com|youtu\.?be)/.+$'
             if not re.match(youtube_regex, youtube_url):
                 raise ValueError('Invalid YouTube URL')
@@ -72,7 +66,6 @@ def process():
         if not video_path:
             return jsonify({'success': False, 'error': 'Failed to download video.'})
 
-        # Process video once and generate frames
         clip_paths, all_frames = process_video(video_path, frame_interval=frame_interval)
 
         if not clip_paths:
@@ -81,10 +74,8 @@ def process():
         if not all_frames:
             return jsonify({'success': False, 'error': 'No frames extracted.'})
 
-        # Sort frames by timestamp
         all_frames.sort(key=lambda x: x['timestamp'])
 
-        # Prepare clips and corresponding frames for the response
         clips_and_frames = []
         for clip_path in clip_paths:
             clip_filename = os.path.basename(clip_path)
@@ -94,7 +85,6 @@ def process():
                 'frames': [os.path.basename(frame['path']) for frame in clip_frames]
             })
 
-        # Prepare timeline frames
         timeline_frames = [
             {
                 'path': frame['path'],
@@ -103,7 +93,6 @@ def process():
             } for frame in all_frames
         ]
 
-        # If using a YouTube URL, get the transcript
         if use_youtube_transcript:
             video_id = re.search(r"v=([^&]+)", youtube_url)
             if video_id:
@@ -113,20 +102,16 @@ def process():
         else:
             video_transcript = None
 
-        # Debug log to check the data type of frames before combining
         frame_data_types = [type(frame['data']).__name__ for frame in all_frames]
         logger.debug(f"Frame data types before combining: {frame_data_types}")
 
-        # Proceed to create combined images
         combined_images = create_combined_images([frame['data'] for frame in all_frames])
 
         if not combined_images:
             return jsonify({'success': False, 'error': 'Failed to create combined images.'})
 
-        # Generate summary
         summary = generate_summary(combined_images[0], video_transcript or transcript)
 
-        # Encode frames and combined image to base64
         encoded_frames = [base64.b64encode(frame['data']).decode('utf-8') for frame in all_frames]
         base64_combined_image = base64.b64encode(combined_images[0]).decode('utf-8')
 
@@ -156,18 +141,20 @@ def process():
 
 @app.route('/download/<filename>')
 def download(filename):
-    # Send the requested file to download
     return send_file(os.path.join(app.config['UPLOAD_FOLDER'], filename), as_attachment=True)
 
 @app.route('/download_frame/<clip_name>/<frame_name>')
 def download_frame(clip_name, frame_name):
-    # Locate the frames directory associated with the clip
     frames_dir = os.path.splitext(os.path.join(app.config['UPLOAD_FOLDER'], clip_name))[0] + "_frames"
-    return send_from_directory(frames_dir, frame_name, as_attachment=True)
+    logger.debug(f"Attempting to serve frame: {frame_name} from directory: {frames_dir}")
+    if os.path.exists(os.path.join(frames_dir, frame_name)):
+        return send_from_directory(frames_dir, frame_name)
+    else:
+        logger.error(f"Frame not found: {frame_name} in directory: {frames_dir}")
+        return "Frame not found", 404
 
 @app.route('/cleanup', methods=['POST'])
 def cleanup():
-    # Clean up the temp folder by removing all files and directories
     for root, dirs, files in os.walk(app.config['UPLOAD_FOLDER'], topdown=False):
         for file in files:
             os.unlink(os.path.join(root, file))
