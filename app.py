@@ -1,15 +1,11 @@
 import os
-import logging
-import shutil
-from flask import Flask, render_template, request, send_file, jsonify
+from flask import Flask, render_template, request, send_file, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
-from utils.youtube_downloader import download_youtube_video, VideoDownloadError
+from utils.youtube_downloader import download_youtube_video
 from utils.video_processor import process_video
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
-
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = os.path.abspath('temp')
+app.config['UPLOAD_FOLDER'] = 'temp'
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500 MB limit
 
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
@@ -22,23 +18,27 @@ def index():
 @app.route('/process', methods=['POST'])
 def process():
     youtube_url = request.form['youtube_url']
-    use_custom_settings = request.form.get('use_custom_settings') == 'true'
-    
-    if use_custom_settings:
-        number_of_clips = int(request.form.get('number_of_clips', 5))
-    else:
-        number_of_clips = None
     
     try:
-        logging.info(f"Downloading video from URL: {youtube_url}")
+        # Download YouTube video
         video_path = download_youtube_video(youtube_url, app.config['UPLOAD_FOLDER'])
-        logging.info(f"Video downloaded successfully: {video_path}")
         
-        logging.info(f"Processing video: {video_path}")
-        clip_paths, all_frames, clips_and_frames = process_video(video_path, number_of_clips)
-        logging.info(f"Video processing completed. Clips: {len(clip_paths)}, Frames: {len(all_frames)}")
+        # Process video and get clip paths and all frames
+        clip_paths, all_frames = process_video(video_path)
         
+        # Sort all frames by timestamp
         all_frames.sort(key=lambda x: x['timestamp'])
+        
+        # Create a list of clip filenames and their corresponding frame directories
+        clips_and_frames = []
+        for clip_path in clip_paths:
+            clip_filename = os.path.basename(clip_path)
+            frames_dir = os.path.splitext(clip_path)[0] + "_frames"
+            frame_filenames = [f for f in os.listdir(frames_dir) if f.endswith('.jpg')]
+            clips_and_frames.append({
+                'clip': clip_filename,
+                'frames': frame_filenames
+            })
         
         return jsonify({
             'success': True,
@@ -51,47 +51,26 @@ def process():
                 } for frame in all_frames
             ]
         })
-    except VideoDownloadError as e:
-        logging.error(f"Video download error: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)})
     except Exception as e:
-        logging.error(f"An unexpected error occurred: {str(e)}", exc_info=True)
-        return jsonify({'success': False, 'error': f"An unexpected error occurred: {str(e)}"})
+        return jsonify({'success': False, 'error': str(e)})
 
-@app.route('/download/<path:filename>')
+@app.route('/download/<filename>')
 def download(filename):
     return send_file(os.path.join(app.config['UPLOAD_FOLDER'], filename), as_attachment=True)
 
-@app.route('/download_frame/<path:clip_name>/<path:frame_name>')
+@app.route('/download_frame/<clip_name>/<frame_name>')
 def download_frame(clip_name, frame_name):
-    frames_dir = os.path.join(app.config['UPLOAD_FOLDER'], f"{clip_name}_frames")
-    file_path = os.path.join(frames_dir, frame_name)
-    logging.info(f"Attempting to serve frame: {file_path}")
-    
-    if os.path.exists(file_path):
-        logging.info(f"Frame file found: {file_path}")
-        return send_file(file_path, mimetype='image/jpeg')
-    else:
-        logging.error(f"Frame file not found: {file_path}")
-        return jsonify({'error': 'Frame not found'}), 404
-
-@app.route('/debug/list_files')
-def list_files():
-    files = []
-    for root, dirs, filenames in os.walk(app.config['UPLOAD_FOLDER']):
-        for filename in filenames:
-            files.append(os.path.join(root, filename))
-    return jsonify({'files': files})
+    frames_dir = os.path.splitext(os.path.join(app.config['UPLOAD_FOLDER'], clip_name))[0] + "_frames"
+    return send_from_directory(frames_dir, frame_name, as_attachment=True)
 
 @app.route('/cleanup', methods=['POST'])
 def cleanup():
-    try:
-        shutil.rmtree(app.config['UPLOAD_FOLDER'])
-        os.makedirs(app.config['UPLOAD_FOLDER'])
-        return jsonify({'success': True, 'message': 'Cleanup completed successfully'})
-    except Exception as e:
-        logging.error(f"An error occurred during cleanup: {str(e)}")
-        return jsonify({'success': False, 'error': f"An error occurred during cleanup: {str(e)}"}), 500
+    for root, dirs, files in os.walk(app.config['UPLOAD_FOLDER'], topdown=False):
+        for file in files:
+            os.unlink(os.path.join(root, file))
+        for dir in dirs:
+            os.rmdir(os.path.join(root, dir))
+    return jsonify({'success': True})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

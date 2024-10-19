@@ -1,24 +1,29 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YouTube Video Splitter</title>
-    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
     <style>
+        .card-img-top {
+            height: 100px;
+            object-fit: cover;
+        }
         .timeline-container {
-            display: flex;
             overflow-x: auto;
-            gap: 10px;
-            padding: 10px;
+            white-space: nowrap;
+            padding: 10px 0;
         }
         .timeline-frame {
-            flex: 0 0 auto;
-            text-align: center;
+            display: inline-block;
+            margin-right: 5px;
+            cursor: pointer;
         }
         .timeline-frame img {
-            max-width: 100px;
-            height: auto;
+            width: 80px;
+            height: 45px;
+            object-fit: cover;
         }
     </style>
 </head>
@@ -27,18 +32,8 @@
         <h1 class="mb-4">YouTube Video Splitter</h1>
         <form id="videoForm">
             <div class="mb-3">
-                <label for="youtube_url" class="form-label">YouTube URL:</label>
-                <input type="url" class="form-control" id="youtube_url" name="youtube_url" required>
-            </div>
-            <div class="mb-3 form-check">
-                <input type="checkbox" class="form-check-input" id="use_custom_settings" name="use_custom_settings">
-                <label class="form-check-label" for="use_custom_settings">Use Custom Settings</label>
-            </div>
-            <div id="custom_settings" style="display: none;">
-                <div class="mb-3">
-                    <label for="number_of_clips" class="form-label">Number of Clips:</label>
-                    <input type="number" class="form-control" id="number_of_clips" name="number_of_clips" value="5" min="1" max="20">
-                </div>
+                <label for="youtube_url" class="form-label">YouTube Video URL:</label>
+                <input type="text" class="form-control" id="youtube_url" name="youtube_url" required>
             </div>
             <button type="submit" class="btn btn-primary">Process Video</button>
         </form>
