@@ -33,3 +33,6 @@ run = ["sh", "-c", "python main.py"]
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[objectStorage]
+defaultBucketID = "replit-objstore-d1114fc6-774a-466a-95c7-980b2b736247"
