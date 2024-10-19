@@ -28,13 +28,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Create timeline
                 data.timeline_frames.forEach((frame, index) => {
-                    const frameElement = document.createElement('div');
-                    frameElement.className = 'timeline-frame';
-                    frameElement.innerHTML = `
-                        <img src="/download_frame/${frame.clip}/${frame.path}" alt="Frame ${index}">
-                        <div class="text-center small">${frame.timestamp}s</div>
-                    `;
-                    frameElement.addEventListener('click', () => scrollToClip(frame.clip));
+                    const frameElement = createTimelineFrame(frame, index);
                     timeline.appendChild(frameElement);
                 });
                 
@@ -49,21 +43,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         col.className = 'col-md-4 mb-3';
                         col.id = `clip-${item.clip}`;
                         
-                        const card = document.createElement('div');
-                        card.className = 'card h-100';
-                        card.innerHTML = `
-                            <div class="card-header">
-                                <h6 class="card-title mb-0">${item.clip}</h6>
-                            </div>
-                            <div class="card-body">
-                                <a href="/download/${item.clip}" class="btn btn-primary btn-sm mb-2">Download Clip</a>
-                                <div class="text-center">
-                                    <img src="/download_frame/${item.clip}/${item.frame}" class="img-fluid mb-2" alt="${item.frame}">
-                                    <a href="/download_frame/${item.clip}/${item.frame}" class="btn btn-sm btn-secondary">Download Frame</a>
-                                </div>
-                            </div>
-                        `;
-                        
+                        const card = createClipCard(item);
                         col.appendChild(card);
                         row.appendChild(col);
                     }
@@ -80,6 +60,30 @@ document.addEventListener('DOMContentLoaded', function() {
             error.textContent = `Error: ${err.message}`;
         });
     });
+
+    function createTimelineFrame(frame, index) {
+        const frameElement = document.createElement('div');
+        frameElement.className = 'timeline-frame';
+        frameElement.innerHTML = `
+            <img src="/download_frame/${frame.clip}/${frame.path}" alt="Frame ${index}">
+        `;
+        frameElement.addEventListener('click', () => scrollToClip(frame.clip));
+        return frameElement;
+    }
+
+    function createClipCard(item) {
+        const card = document.createElement('div');
+        card.className = 'card h-100';
+        card.innerHTML = `
+            <img src="/download_frame/${item.clip}/${item.frame}" class="card-img-top" alt="${item.frame}">
+            <div class="card-body">
+                <p class="card-text">${item.clip}</p>
+                <a href="/download/${item.clip}" class="btn btn-primary btn-sm me-2">Download Clip</a>
+                <a href="/download_frame/${item.clip}/${item.frame}" class="btn btn-secondary btn-sm">Download Frame</a>
+            </div>
+        `;
+        return card;
+    }
 
     function scrollToClip(clipName) {
         const clipElement = document.getElementById(`clip-${clipName}`);

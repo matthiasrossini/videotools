@@ -1,16 +1,10 @@
 import os
 import cv2
-from scenedetect import detect, ContentDetector, SceneManager, VideoManager
+from scenedetect import detect, ContentDetector, SceneManager
 from scenedetect.video_splitter import split_video_ffmpeg
 
 def process_video(video_path):
-    # Create a VideoManager
-    video_manager = VideoManager([video_path])
-    scene_manager = SceneManager()
-    scene_manager.add_detector(ContentDetector())
-
     # Detect scenes
-    video_manager.start()
     scene_list = detect(video_path, ContentDetector())
 
     # Get the directory and filename
