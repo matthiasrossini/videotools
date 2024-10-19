@@ -9,7 +9,7 @@ from utils.video_processor import process_video
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'temp'
+app.config['UPLOAD_FOLDER'] = os.path.abspath('temp')
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500 MB limit
 
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
@@ -49,15 +49,17 @@ def process():
             ]
         })
     except VideoDownloadError as e:
+        logging.error(f"Video download error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)})
     except Exception as e:
+        logging.error(f"An unexpected error occurred: {str(e)}")
         return jsonify({'success': False, 'error': f"An unexpected error occurred: {str(e)}"})
 
-@app.route('/download/<filename>')
+@app.route('/download/<path:filename>')
 def download(filename):
     return send_file(os.path.join(app.config['UPLOAD_FOLDER'], filename), as_attachment=True)
 
-@app.route('/download_frame/<clip_name>/<frame_name>')
+@app.route('/download_frame/<path:clip_name>/<path:frame_name>')
 def download_frame(clip_name, frame_name):
     frames_dir = os.path.join(app.config['UPLOAD_FOLDER'], f"{clip_name}_frames")
     file_path = os.path.join(frames_dir, frame_name)
@@ -85,6 +87,7 @@ def cleanup():
         os.makedirs(app.config['UPLOAD_FOLDER'])
         return jsonify({'success': True, 'message': 'Cleanup completed successfully'})
     except Exception as e:
+        logging.error(f"An error occurred during cleanup: {str(e)}")
         return jsonify({'success': False, 'error': f"An error occurred during cleanup: {str(e)}"}), 500
 
 if __name__ == '__main__':

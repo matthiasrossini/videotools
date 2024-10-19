@@ -25,11 +25,13 @@ def download_youtube_video(url, output_path):
             info = ydl.extract_info(url, download=True)
             filename = ydl.prepare_filename(info)
         
-        logging.info(f"Downloaded video file: {os.path.abspath(filename)}")
+        # Use os.path.abspath to get the full path
+        full_path = os.path.abspath(filename)
+        logging.info(f"Downloaded video file: {full_path}")
         
-        if not os.path.exists(filename):
-            raise VideoDownloadError(f"Video file not found at {os.path.abspath(filename)}")
+        if not os.path.exists(full_path):
+            raise VideoDownloadError(f"Video file not found at {full_path}")
 
-        return filename
+        return full_path
     except Exception as e:
         raise VideoDownloadError(f"Error downloading video: {str(e)}")

@@ -1,6 +1,9 @@
 import os
 import cv2
+import logging
 from scenedetect import detect, ContentDetector, split_video_ffmpeg
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def process_video(video_path, number_of_clips=None, frames_per_clip=None):
     # Detect scenes
@@ -11,7 +14,8 @@ def process_video(video_path, number_of_clips=None, frames_per_clip=None):
     filename = os.path.splitext(os.path.basename(video_path))[0]
     
     # Split video into clips
-    split_video_ffmpeg(video_path, scene_list, output_file_template=f"{directory}/{filename}_scene_$SCENE_NUMBER.mp4")
+    output_file_template = os.path.join(directory, f"{filename}_scene_$SCENE_NUMBER.mp4")
+    split_video_ffmpeg(video_path, scene_list, output_file_template=output_file_template)
     
     # Get the list of generated clip paths
     clip_paths = [
@@ -44,7 +48,7 @@ def process_video(video_path, number_of_clips=None, frames_per_clip=None):
                 'frames': frame_filenames
             })
         except Exception as e:
-            print(f"Error processing clip {clip_path}: {str(e)}")
+            logging.error(f"Error processing clip {clip_path}: {str(e)}")
     
     return clip_paths, all_frames, clips_and_frames
 
@@ -63,6 +67,9 @@ def extract_frames(video_path, frames_per_clip=None):
     frames_dir = os.path.join(os.path.dirname(video_path), f"{clip_name}_frames")
     os.makedirs(frames_dir, exist_ok=True)
     
+    logging.info(f"Extracting frames for clip: {video_path}")
+    logging.info(f"Frames directory: {frames_dir}")
+    
     frames = []
     for i in range(frames_per_clip):
         frame_position = i * frame_interval
@@ -78,6 +85,9 @@ def extract_frames(video_path, frames_per_clip=None):
                 'clip': os.path.basename(video_path)
             }
             frames.append(frame_info)
+            logging.info(f"Saved frame: {frame_path}")
+        else:
+            logging.warning(f"Failed to read frame at position {frame_position} for clip: {video_path}")
     
     cap.release()
     return frames
