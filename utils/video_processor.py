@@ -174,21 +174,22 @@ def get_youtube_transcript(video_id):
         return None
 
 def generate_summary(combined_image, transcript):
-    logger.info('Generating summary using OpenAI API')
+    logger.info('Generating summary using OpenAI GPT-4 Vision API')
 
     encoded_image = base64.b64encode(combined_image).decode('utf-8')
-    prompt = f'''
-    Based on the following image of video frames and transcript, provide a concise summary of the video content:
-    Transcript: {transcript}
-    '''
     
     try:
         client = openai.OpenAI()
         response = client.chat.completions.create(
-            model='gpt-4',
+            model="gpt-4-vision-preview",
             messages=[
-                {'role': 'system', 'content': 'You are a helpful assistant.'},
-                {'role': 'user', 'content': prompt}
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": f"Analyze this image and provide a concise summary of the video content. Here's the transcript for additional context: {transcript}"},
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"}}
+                    ],
+                }
             ],
             max_tokens=500
         )
