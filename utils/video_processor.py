@@ -95,13 +95,16 @@ def process_video(video_path: str, frames_per_clip: int = 5, frame_interval: Opt
         logger.error(f"Error detecting scenes: {e}")
         return [], []
 
-    if len(scene_list) <= 1:
+    if len(scene_list) == 0:
+        logger.info("No scenes detected, treating the entire video as one scene.")
+        scene_list = [(0, None)]
+    elif len(scene_list) == 1:
         logger.info("Only one scene detected, processing entire video.")
         scene_list = [(scene_list[0][0], None)]
 
     directory = os.path.dirname(video_path)
     filename = os.path.splitext(os.path.basename(video_path))[0]
-    output_file_template = os.path.join(directory, f"{filename}_scene_$SCENE_NUMBER.mp4")
+    output_file_template = os.path.join(directory, f"{filename}_scene_{{:03d}}.mp4")
 
     try:
         split_video_ffmpeg(video_path, scene_list, output_file_template=output_file_template)
@@ -116,7 +119,10 @@ def process_video(video_path: str, frames_per_clip: int = 5, frame_interval: Opt
     ]
 
     if not clip_paths:
-        clip_paths = [video_path]
+        logger.warning("No clips were generated. Using the original video as a single clip.")
+        new_clip_path = output_file_template.format(1)
+        os.rename(video_path, new_clip_path)
+        clip_paths = [new_clip_path]
 
     all_frames = []
     for clip_path in clip_paths:

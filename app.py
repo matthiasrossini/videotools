@@ -69,6 +69,9 @@ def process():
         logger.info(f"Starting video processing with frame interval: {frame_interval}")
         clip_paths, all_frames = process_video(video_path, frame_interval=frame_interval)
 
+        logger.info(f"Video processing complete. Clip paths: {clip_paths}")
+        logger.info(f"Number of frames extracted: {len(all_frames)}")
+
         if not clip_paths:
             logger.error("No clips generated during video processing")
             raise ValueError('No clips generated during video processing')
