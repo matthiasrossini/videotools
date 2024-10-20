@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const summaryText = document.getElementById('summaryText');
     const keyPointsList = document.getElementById('keyPointsList');
     const visualDescription = document.getElementById('visualDescription');
+    const retrySummaryBtn = document.getElementById('retrySummaryBtn');
 
     if (!form) {
         console.error("Form element not found!");
@@ -23,9 +24,18 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!summaryText) console.error("Summary text element not found");
     if (!keyPointsList) console.error("Key points list element not found");
     if (!visualDescription) console.error("Visual description element not found");
+    if (!retrySummaryBtn) console.error("Retry summary button not found");
 
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
+        await processVideo();
+    });
+
+    retrySummaryBtn.addEventListener('click', async function() {
+        await retrySummaryGeneration();
+    });
+
+    async function processVideo() {
         const formData = new FormData(form);
 
         if (loading) loading.classList.remove('d-none');
@@ -36,6 +46,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (summaryText) summaryText.textContent = '';
         if (keyPointsList) keyPointsList.innerHTML = '';
         if (visualDescription) visualDescription.textContent = '';
+        if (retrySummaryBtn) retrySummaryBtn.classList.add('d-none');
 
         try {
             console.log('Submitting form data...');
@@ -72,17 +83,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                 }
 
-                if (summaryText) summaryText.textContent = data.summary || 'No summary available.';
-                if (keyPointsList && data.key_points) {
-                    data.key_points.forEach(point => {
-                        const listItem = document.createElement('li');
-                        listItem.textContent = point;
-                        keyPointsList.appendChild(listItem);
-                    });
-                }
-                if (visualDescription) {
-                    visualDescription.textContent = data.visual_description || 'No visual description available.';
-                }
+                updateSummarySection(data);
             } else {
                 throw new Error(data.error);
             }
@@ -94,7 +95,75 @@ document.addEventListener('DOMContentLoaded', function() {
                 error.textContent = `Error: ${error.message}`;
             }
         }
-    });
+    }
+
+    async function retrySummaryGeneration() {
+        if (loading) loading.classList.remove('d-none');
+        if (retrySummaryBtn) retrySummaryBtn.classList.add('d-none');
+
+        try {
+            const response = await fetch('/retry_summary', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({}),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('Received retry data:', data);
+
+            if (loading) loading.classList.add('d-none');
+
+            if (data.success) {
+                updateSummarySection(data);
+            } else {
+                throw new Error(data.error);
+            }
+        } catch (error) {
+            console.error('Error retrying summary generation:', error);
+            if (loading) loading.classList.add('d-none');
+            if (error) {
+                error.classList.remove('d-none');
+                error.textContent = `Error: ${error.message}`;
+            }
+            if (retrySummaryBtn) retrySummaryBtn.classList.remove('d-none');
+        }
+    }
+
+    function updateSummarySection(data) {
+        if (summaryText) {
+            summaryText.textContent = data.summary || 'No summary available.';
+        }
+        if (keyPointsList) {
+            keyPointsList.innerHTML = '';
+            if (data.key_points && data.key_points.length > 0) {
+                data.key_points.forEach(point => {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = point;
+                    keyPointsList.appendChild(listItem);
+                });
+            } else {
+                const listItem = document.createElement('li');
+                listItem.textContent = 'No key points available.';
+                keyPointsList.appendChild(listItem);
+            }
+        }
+        if (visualDescription) {
+            visualDescription.textContent = data.visual_description || 'No visual description available.';
+        }
+        if (retrySummaryBtn) {
+            if (data.summary === 'Unable to generate summary due to an error.') {
+                retrySummaryBtn.classList.remove('d-none');
+            } else {
+                retrySummaryBtn.classList.add('d-none');
+            }
+        }
+    }
 
     function createTimelineFrame(frame, index) {
         const frameElement = document.createElement('div');

@@ -79,6 +79,7 @@
                 <ul id="keyPointsList"></ul>
                 <h4>Visual Description</h4>
                 <p id="visualDescription"></p>
+                <button id="retrySummaryBtn" class="btn btn-secondary d-none">Retry Summary Generation</button>
             </div>
 
             <div id="debugInfo" class="mt-4">
@@ -88,117 +89,7 @@
         </div>
     </div>
 
-    <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const form = document.getElementById('videoForm');
-        const loading = document.getElementById('loading');
-        const error = document.getElementById('error');
-        const results = document.getElementById('results');
-        const timeline = document.getElementById('timeline');
-        const clipList = document.getElementById('clipList');
-        const summaryText = document.getElementById('summaryText');
-        const keyPointsList = document.getElementById('keyPointsList');
-        const visualDescription = document.getElementById('visualDescription');
-        const debugInfoContent = document.getElementById('debugInfoContent');
-
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = new FormData(form);
-
-            loading.classList.remove('d-none');
-            error.classList.add('d-none');
-            results.classList.add('d-none');
-            timeline.innerHTML = '';
-            clipList.innerHTML = '';
-            summaryText.textContent = '';
-            keyPointsList.innerHTML = '';
-            visualDescription.textContent = '';
-            debugInfoContent.textContent = '';
-
-            try {
-                const response = await fetch('/process', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const data = await response.json();
-                loading.classList.add('d-none');
-
-                if (data.success) {
-                    results.classList.remove('d-none');
-
-                    data.timeline_frames.forEach((frame, index) => {
-                        const frameElement = createTimelineFrame(frame, index);
-                        timeline.appendChild(frameElement);
-                    });
-
-                    data.clips_and_frames.forEach(item => {
-                        const row = createClipRow(item);
-                        clipList.appendChild(row);
-                    });
-
-                    summaryText.textContent = data.summary || 'No summary available.';
-                    data.key_points.forEach(point => {
-                        const listItem = document.createElement('li');
-                        listItem.textContent = point;
-                        keyPointsList.appendChild(listItem);
-                    });
-                    visualDescription.textContent = data.visual_description || 'No visual description available.';
-
-                    // Display debug information
-                    debugInfoContent.textContent = JSON.stringify(data.debug_info, null, 2);
-                } else {
-                    throw new Error(data.error);
-                }
-            } catch (error) {
-                loading.classList.add('d-none');
-                error.classList.remove('d-none');
-                error.textContent = `Error: ${error.message}`;
-            }
-        });
-
-        function createTimelineFrame(frame, index) {
-            const frameElement = document.createElement('div');
-            frameElement.className = 'timeline-frame';
-            frameElement.innerHTML = `
-                <img src="/download_frame/${frame.clip}/${frame.path}" alt="Frame ${index}">
-            `;
-            frameElement.addEventListener('click', () => scrollToClip(frame.clip));
-            return frameElement;
-        }
-
-        function createClipRow(item) {
-            const row = document.createElement('div');
-            row.className = 'row mb-4';
-            const col = document.createElement('div');
-            col.className = 'col-md-4 mb-3';
-            col.innerHTML = `
-                <div class="card h-100">
-                    <img src="/download_frame/${item.clip}/${item.frame}" class="card-img-top" alt="${item.frame}">
-                    <div class="card-body">
-                        <p class="card-text clip-name-small">${item.clip}</p>
-                        <a href="/download/${item.clip}" class="btn btn-primary btn-sm me-2">Download Clip</a>
-                        <a href="/download_frame/${item.clip}/${item.frame}" class="btn btn-secondary btn-sm">Download Frame</a>
-                    </div>
-                </div>
-            `;
-            row.appendChild(col);
-            return row;
-        }
-
-        function scrollToClip(clipName) {
-            const clipElement = document.getElementById(`clip-${clipName}`);
-            if (clipElement) {
-                clipElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        }
-    });
-    </script>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

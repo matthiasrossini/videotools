@@ -139,6 +139,7 @@ def get_youtube_transcript(video_id: str) -> Optional[str]:
 
 def generate_summary(image: np.ndarray, transcript: Optional[str] = None) -> Tuple[str, List[str], str]:
     try:
+        logger.info("Starting summary generation")
         _, buffer = cv2.imencode('.jpg', image)
         base64_image = base64.b64encode(buffer).decode('utf-8')
 
@@ -154,21 +155,30 @@ def generate_summary(image: np.ndarray, transcript: Optional[str] = None) -> Tup
             {"role": "user", "content": f"Image: data:image/jpeg;base64,{base64_image}\nWhat's in this image?"}
         )
 
+        logger.debug(f"Sending request to OpenAI API with {len(messages)} messages")
         response = openai.ChatCompletion.create(
             model="gpt-4-vision-preview",
             messages=messages,
             max_tokens=500,
         )
+        logger.debug("Received response from OpenAI API")
 
         summary = response.choices[0].message.content
         key_points = re.findall(r'\n\s*-\s*(.*)', summary)
         visual_description = re.search(r'Visual description:(.*?)(?=\n\n|$)', summary, re.DOTALL)
         visual_description = visual_description.group(1).strip() if visual_description else "No visual description available."
 
+        logger.info("Successfully generated summary")
         return summary, key_points, visual_description
 
+    except openai.error.AuthenticationError as e:
+        logger.error(f"OpenAI API authentication error: {e}")
+        raise ValueError("Invalid OpenAI API key. Please check your configuration.")
+    except openai.error.APIError as e:
+        logger.error(f"OpenAI API error: {e}")
+        raise ValueError("Error communicating with OpenAI API. Please try again later.")
     except Exception as e:
-        logger.error(f"Error generating summary: {e}")
+        logger.error(f"Unexpected error in generate_summary: {e}", exc_info=True)
         return "Error generating summary", [], "Error generating visual description"
 
 def create_combined_images(frames: List[bytes]) -> List[bytes]:
