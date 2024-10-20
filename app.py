@@ -7,6 +7,7 @@ from flask import Flask, render_template, request, jsonify, send_file, send_from
 from werkzeug.utils import secure_filename
 from utils.video_processor import process_video, generate_summary, download_youtube_video, get_youtube_transcript, create_combined_images
 import openai
+from PIL import Image
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'temp'
@@ -129,6 +130,11 @@ def process():
             summary = "Unable to generate summary due to an error."
             key_points = []
             visual_description = "Visual description unavailable."
+        except (Image.UnidentifiedImageError, OSError) as e:
+            logger.error(f"PIL image processing error: {e}")
+            summary = "Unable to process image for summary generation."
+            key_points = []
+            visual_description = "Visual description unavailable due to image processing error."
         except openai.APIError as e:
             logger.error(f"OpenAI API error: {e}")
             raise ValueError(f'Error communicating with OpenAI API: {str(e)}')

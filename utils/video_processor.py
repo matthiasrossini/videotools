@@ -10,6 +10,8 @@ import base64
 import logging
 import re
 from typing import List, Tuple, Optional
+from PIL import Image
+from io import BytesIO
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -19,7 +21,6 @@ if not OPENAI_API_KEY:
     logger.error("OpenAI API key is missing.")
     raise ValueError("OpenAI API key is required to run this script.")
 
-# Initialize OpenAI API
 openai.api_key = OPENAI_API_KEY
 
 def download_youtube_video(url: str, output_dir: str) -> Optional[str]:
@@ -147,19 +148,21 @@ def generate_summary(image: np.ndarray, transcript: Optional[str] = None) -> Tup
     try:
         logger.info("Starting summary generation")
         
-        # Check if image is a numpy array
         if not isinstance(image, np.ndarray):
             logger.error("Input image is not a numpy array")
             raise ValueError("Input image must be a numpy array")
         
-        # Ensure image is in the correct format (BGR)
         if len(image.shape) == 2:
-            image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+            image = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
         elif len(image.shape) == 3 and image.shape[2] == 4:
-            image = cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
+            image = cv2.cvtColor(image, cv2.COLOR_BGRA2RGB)
+        elif len(image.shape) == 3 and image.shape[2] == 3:
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         
-        _, buffer = cv2.imencode('.jpg', image)
-        base64_image = base64.b64encode(buffer).decode('utf-8')
+        pil_image = Image.fromarray(image)
+        buffered = BytesIO()
+        pil_image.save(buffered, format="JPEG")
+        base64_image = base64.b64encode(buffered.getvalue()).decode('utf-8')
 
         messages = [
             {"role": "system", "content": "You are a helpful assistant that can analyze images and provide summaries."},
@@ -189,6 +192,9 @@ def generate_summary(image: np.ndarray, transcript: Optional[str] = None) -> Tup
         logger.info("Successfully generated summary")
         return summary, key_points, visual_description
 
+    except (Image.UnidentifiedImageError, OSError) as e:
+        logger.error(f"PIL image processing error: {e}")
+        raise ValueError(f"Error processing image with PIL: {str(e)}")
     except openai.APIError as e:
         logger.error(f"OpenAI API error: {e}")
         raise ValueError("Error communicating with OpenAI API. Please try again later.")
