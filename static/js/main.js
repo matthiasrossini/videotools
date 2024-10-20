@@ -100,11 +100,12 @@ document.addEventListener('DOMContentLoaded', function() {
             img.alt = `Frame ${index}`;
             img.onerror = function() {
                 console.error(`Failed to load image: ${img.src}`);
-                img.src = '/static/images/placeholder.jpg'; // Replace with an actual placeholder image
+                img.src = '/static/images/placeholder.jpg';
+                img.alt = 'Image not found';
             };
         } else {
             console.error(`Invalid frame data for index ${index}`);
-            img.src = '/static/images/placeholder.jpg'; // Replace with an actual placeholder image
+            img.src = '/static/images/placeholder.jpg';
             img.alt = 'Placeholder';
         }
         frameElement.appendChild(img);

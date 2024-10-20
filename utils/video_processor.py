@@ -53,9 +53,9 @@ def extract_frames(video_path, num_frames=5, interval=None):
         if ret:
             _, buffer = cv2.imencode('.jpg', frame)
             frame_data = buffer.tobytes()
-            logger.debug(f"Frame {i} data type: {type(frame_data)}")  # Debug log for data type
+            logger.debug(f"Frame {i} data type: {type(frame_data)}")
             
-            # Generate the full relative path for the frame
+            # Generate the relative path for the frame
             clip_name = os.path.splitext(os.path.basename(video_path))[0]
             frame_filename = f"frame_{i}.jpg"
             frame_path = os.path.join(f"{clip_name}_frames", frame_filename)
@@ -125,7 +125,7 @@ def process_video(video_path, frames_per_clip=5, frame_interval=None):
             frame_path = os.path.join(frames_dir, f"frame_{i}.jpg")
             with open(frame_path, "wb") as f:
                 f.write(frame['data'])
-            logger.debug(f"Saved frame to: {frame_path}")  # Debug logging for frame saving
+            logger.debug(f"Saved frame to: {frame_path}")
             frame['path'] = os.path.relpath(frame_path, directory)
 
     if all_frames:
@@ -195,16 +195,21 @@ def get_youtube_transcript(video_id):
         return None
 
 def generate_summary(combined_image, transcript):
-    logger.info('Generating summary using OpenAI API with gpt-4o-mini model')
+    logger.info('Generating summary using OpenAI API with gpt-4-vision-preview model')
 
     encoded_image = base64.b64encode(combined_image).decode('utf-8')
     
     try:
         response = openai.ChatCompletion.create(
-            model='gpt-4o-mini',
+            model='gpt-4-vision-preview',
             messages=[
-                {'role': 'system', 'content': 'You are a helpful assistant.'},
-                {'role': 'user', 'content': f'Analyze this image and provide a concise summary of the video content. Here\'s the transcript for additional context: {transcript}'}
+                {
+                    'role': 'user',
+                    'content': [
+                        {'type': 'text', 'text': f'Analyze this image and provide a concise summary of the video content. Here\'s the transcript for additional context: {transcript}'},
+                        {'type': 'image_url', 'image_url': {'url': f'data:image/jpeg;base64,{encoded_image}'}}
+                    ]
+                }
             ],
             max_tokens=500
         )
@@ -225,9 +230,13 @@ if __name__ == "__main__":
         clip_paths, all_frames = process_video(video_path)
         combined_images = create_combined_images([frame['data'] for frame in all_frames])
 
-        transcript = get_youtube_transcript(re.search(r"v=([^&]+)", youtube_url).group(1))
-        for combined_image in combined_images:
-            summary = generate_summary(combined_image, transcript)
-            print(f"Summary: {summary}")
+        video_id_match = re.search(r"v=([^&]+)", youtube_url)
+        if video_id_match:
+            transcript = get_youtube_transcript(video_id_match.group(1))
+            for combined_image in combined_images:
+                summary = generate_summary(combined_image, transcript)
+                print(f"Summary: {summary}")
+        else:
+            logger.error("Could not extract video ID from URL")
     else:
         logger.error("Video download failed.")

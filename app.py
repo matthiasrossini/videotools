@@ -94,9 +94,9 @@ def process():
         ]
 
         if use_youtube_transcript:
-            video_id = re.search(r"v=([^&]+)", youtube_url)
-            if video_id:
-                video_transcript = get_youtube_transcript(video_id.group(1))
+            video_id_match = re.search(r"v=([^&]+)", youtube_url)
+            if video_id_match:
+                video_transcript = get_youtube_transcript(video_id_match.group(1))
             else:
                 video_transcript = None
         else:
@@ -145,7 +145,8 @@ def download(filename):
 
 @app.route('/download_frame/<clip_name>/<frame_name>')
 def download_frame(clip_name, frame_name):
-    frames_dir = os.path.join(app.config['UPLOAD_FOLDER'], f"{os.path.splitext(clip_name)[0]}_frames")
+    clip_base_name = os.path.splitext(clip_name)[0]
+    frames_dir = os.path.join(app.config['UPLOAD_FOLDER'], f"{clip_base_name}_frames")
     frame_path = os.path.join(frames_dir, frame_name)
     logger.debug(f"Attempting to serve frame: {frame_name} from directory: {frames_dir}")
     logger.debug(f"Full frame path: {frame_path}")
