@@ -140,6 +140,18 @@ def get_youtube_transcript(video_id: str) -> Optional[str]:
 def generate_summary(image: np.ndarray, transcript: Optional[str] = None) -> Tuple[str, List[str], str]:
     try:
         logger.info("Starting summary generation")
+        
+        # Check if image is a numpy array
+        if not isinstance(image, np.ndarray):
+            logger.error("Input image is not a numpy array")
+            raise ValueError("Input image must be a numpy array")
+        
+        # Ensure image is in the correct format (BGR)
+        if len(image.shape) == 2:
+            image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+        elif len(image.shape) == 3 and image.shape[2] == 4:
+            image = cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
+        
         _, buffer = cv2.imencode('.jpg', image)
         base64_image = base64.b64encode(buffer).decode('utf-8')
 
@@ -171,12 +183,15 @@ def generate_summary(image: np.ndarray, transcript: Optional[str] = None) -> Tup
         logger.info("Successfully generated summary")
         return summary, key_points, visual_description
 
-    except openai.error.AuthenticationError as e:
-        logger.error(f"OpenAI API authentication error: {e}")
-        raise ValueError("Invalid OpenAI API key. Please check your configuration.")
-    except openai.error.APIError as e:
+    except openai.APIError as e:
         logger.error(f"OpenAI API error: {e}")
         raise ValueError("Error communicating with OpenAI API. Please try again later.")
+    except openai.AuthenticationError as e:
+        logger.error(f"OpenAI API authentication error: {e}")
+        raise ValueError("Invalid OpenAI API key. Please check your configuration.")
+    except openai.RateLimitError as e:
+        logger.error(f"OpenAI API rate limit error: {e}")
+        raise ValueError("OpenAI API rate limit exceeded. Please try again later.")
     except Exception as e:
         logger.error(f"Unexpected error in generate_summary: {e}", exc_info=True)
         return "Error generating summary", [], "Error generating visual description"

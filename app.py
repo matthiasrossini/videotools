@@ -6,6 +6,7 @@ import re
 from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
 from werkzeug.utils import secure_filename
 from utils.video_processor import process_video, generate_summary, download_youtube_video, get_youtube_transcript, create_combined_images
+import openai
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'temp'
@@ -126,6 +127,15 @@ def process():
             summary = "Unable to generate summary due to an error."
             key_points = []
             visual_description = "Visual description unavailable."
+        except openai.APIError as e:
+            logger.error(f"OpenAI API error: {e}")
+            return jsonify({'success': False, 'error': 'Error communicating with OpenAI API. Please try again later.'}), 500
+        except openai.AuthenticationError as e:
+            logger.error(f"OpenAI API authentication error: {e}")
+            return jsonify({'success': False, 'error': 'Invalid OpenAI API key. Please check your configuration.'}), 500
+        except openai.RateLimitError as e:
+            logger.error(f"OpenAI API rate limit error: {e}")
+            return jsonify({'success': False, 'error': 'OpenAI API rate limit exceeded. Please try again later.'}), 429
 
         encoded_frames = [base64.b64encode(frame['data']).decode('utf-8') for frame in all_frames]
         base64_combined_image = base64.b64encode(combined_images[0]).decode('utf-8')
