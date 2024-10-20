@@ -95,7 +95,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const frameElement = document.createElement('div');
         frameElement.className = 'timeline-frame';
         const img = document.createElement('img');
-        if (frame && frame.path) {
+        if (frame && frame.clip && frame.path) {
             img.src = `/download_frame/${frame.clip}/${frame.path}`;
             img.alt = `Frame ${index}`;
             img.onerror = function() {

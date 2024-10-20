@@ -55,20 +55,18 @@ def extract_frames(video_path, num_frames=5, interval=None):
             frame_data = buffer.tobytes()
             logger.debug(f"Frame {i} data type: {type(frame_data)}")
             
-            # Generate the relative path for the frame
-            clip_name = os.path.splitext(os.path.basename(video_path))[0]
+            # Generate the frame filename
             frame_filename = f"frame_{i}.jpg"
-            frame_path = os.path.join(f"{clip_name}_frames", frame_filename)
             
             frames.append({
                 'data': frame_data,
                 'timestamp': cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0,
-                'path': frame_path,
+                'path': frame_filename,
                 'clip': os.path.basename(video_path)
             })
             
             # Debug logging for frame path
-            logger.debug(f"Frame {i} path: {frame_path}")
+            logger.debug(f"Frame {i} filename: {frame_filename}")
         else:
             logger.warning(f"Failed to read frame {i} from video")
 
@@ -122,11 +120,10 @@ def process_video(video_path, frames_per_clip=5, frame_interval=None):
         os.makedirs(frames_dir, exist_ok=True)
         
         for i, frame in enumerate(frames):
-            frame_path = os.path.join(frames_dir, f"frame_{i}.jpg")
+            frame_path = os.path.join(frames_dir, frame['path'])
             with open(frame_path, "wb") as f:
                 f.write(frame['data'])
             logger.debug(f"Saved frame to: {frame_path}")
-            frame['path'] = os.path.relpath(frame_path, directory)
 
     if all_frames:
         logger.info(f"Sorting {len(all_frames)} frames by timestamp")
@@ -142,13 +139,13 @@ def create_combined_images(frames, max_width=65500, max_height=65500, frames_per
 
         logger.debug(f"Processing chunk {i // frames_per_image + 1}")
         for j, frame in enumerate(chunk):
-            logger.debug(f"Frame {j} in chunk {i // frames_per_image + 1} data type: {type(frame)}")
-            if not isinstance(frame, bytes):
-                logger.error(f"Frame {j} in chunk {i // frames_per_image + 1} is not bytes: {type(frame)}")
+            logger.debug(f"Frame {j} in chunk {i // frames_per_image + 1} data type: {type(frame['data'])}")
+            if not isinstance(frame['data'], bytes):
+                logger.error(f"Frame {j} in chunk {i // frames_per_image + 1} is not bytes: {type(frame['data'])}")
 
         decoded_frames = [
-            cv2.imdecode(np.frombuffer(frame, np.uint8), cv2.IMREAD_COLOR)
-            for frame in chunk if isinstance(frame, bytes)
+            cv2.imdecode(np.frombuffer(frame['data'], np.uint8), cv2.IMREAD_COLOR)
+            for frame in chunk if isinstance(frame['data'], bytes)
         ]
 
         if not decoded_frames:
@@ -228,7 +225,7 @@ if __name__ == "__main__":
 
     if video_path:
         clip_paths, all_frames = process_video(video_path)
-        combined_images = create_combined_images([frame['data'] for frame in all_frames])
+        combined_images = create_combined_images(all_frames)
 
         video_id_match = re.search(r"v=([^&]+)", youtube_url)
         if video_id_match:
