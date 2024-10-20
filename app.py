@@ -66,13 +66,18 @@ def process():
         if not video_path:
             return jsonify({'success': False, 'error': 'Failed to download video.'})
 
+        logger.info(f"Starting video processing with frame interval: {frame_interval}")
         clip_paths, all_frames = process_video(video_path, frame_interval=frame_interval)
 
         if not clip_paths:
+            logger.error("No clips generated during video processing")
             return jsonify({'success': False, 'error': 'No clips generated.'})
 
         if not all_frames:
+            logger.error("No frames extracted during video processing")
             return jsonify({'success': False, 'error': 'No frames extracted.'})
+
+        logger.info(f"Successfully processed video. Generated {len(clip_paths)} clips and {len(all_frames)} frames.")
 
         all_frames.sort(key=lambda x: x['timestamp'])
 
@@ -108,6 +113,7 @@ def process():
         combined_images = create_combined_images([frame['data'] for frame in all_frames])
 
         if not combined_images:
+            logger.error("Failed to create combined images")
             return jsonify({'success': False, 'error': 'Failed to create combined images.'})
 
         summary = generate_summary(combined_images[0], video_transcript or transcript)
@@ -115,6 +121,7 @@ def process():
         encoded_frames = [base64.b64encode(frame['data']).decode('utf-8') for frame in all_frames]
         base64_combined_image = base64.b64encode(combined_images[0]).decode('utf-8')
 
+        logger.info("Successfully prepared response data")
         return jsonify({
             'success': True,
             'clips_and_frames': clips_and_frames,
@@ -156,7 +163,13 @@ def download_frame(clip_name, frame_name):
         return send_from_directory(frames_dir, frame_name)
     else:
         logger.error(f"Frame not found: {frame_name} in directory: {frames_dir}")
-        return send_file('static/images/placeholder.jpg'), 404
+        placeholder_path = os.path.join(app.static_folder, 'images', 'placeholder.jpg')
+        if os.path.exists(placeholder_path):
+            logger.info(f"Serving placeholder image for frame: {frame_name}")
+            return send_file(placeholder_path), 404
+        else:
+            logger.error("Placeholder image not found")
+            return "Frame not found and placeholder image is missing", 404
 
 @app.route('/cleanup', methods=['POST'])
 def cleanup():

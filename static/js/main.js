@@ -130,7 +130,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="carousel-inner">
                         ${item.frames.map((frame, index) => `
                             <div class="carousel-item ${index === 0 ? 'active' : ''}">
-                                <img src="/download_frame/${encodeURIComponent(item.clip)}/${encodeURIComponent(frame)}" class="d-block w-100" alt="${frame}" onerror="this.onerror=null; this.src='/static/images/placeholder.jpg'; console.error('Failed to load frame:', '${item.clip}/${frame}');">
+                                <img src="/download_frame/${encodeURIComponent(item.clip)}/${encodeURIComponent(frame)}" 
+                                     class="d-block w-100" 
+                                     alt="${frame}" 
+                                     onerror="this.onerror=null; this.src='/static/images/placeholder.jpg'; console.error('Failed to load frame:', '${item.clip}/${frame}');">
                             </div>
                         `).join('')}
                     </div>
