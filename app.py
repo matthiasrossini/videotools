@@ -50,6 +50,8 @@ def process():
             input_source = youtube_url
             use_youtube_transcript = True
             video_path = download_youtube_video(youtube_url, app.config['UPLOAD_FOLDER'])
+            if not video_path:
+                raise ValueError('Failed to download YouTube video')
 
         elif video_file:
             if not video_file.filename:
@@ -64,19 +66,16 @@ def process():
         else:
             raise ValueError('No YouTube URL or video file provided')
 
-        if not video_path:
-            return jsonify({'success': False, 'error': 'Failed to download video.'})
-
         logger.info(f"Starting video processing with frame interval: {frame_interval}")
         clip_paths, all_frames = process_video(video_path, frame_interval=frame_interval)
 
         if not clip_paths:
             logger.error("No clips generated during video processing")
-            return jsonify({'success': False, 'error': 'No clips generated.'})
+            raise ValueError('No clips generated during video processing')
 
         if not all_frames:
             logger.error("No frames extracted during video processing")
-            return jsonify({'success': False, 'error': 'No frames extracted.'})
+            raise ValueError('No frames extracted during video processing')
 
         logger.info(f"Successfully processed video. Generated {len(clip_paths)} clips and {len(all_frames)} frames.")
 
@@ -115,10 +114,10 @@ def process():
             combined_images = create_combined_images([frame['data'] for frame in all_frames])
             if not combined_images:
                 logger.error("Failed to create combined images")
-                return jsonify({'success': False, 'error': 'Failed to create combined images.'})
+                raise ValueError('Failed to create combined images')
         except Exception as e:
             logger.error(f"Error creating combined images: {str(e)}")
-            return jsonify({'success': False, 'error': 'Error creating combined images.'})
+            raise ValueError(f'Error creating combined images: {str(e)}')
 
         try:
             summary, key_points, visual_description = generate_summary(combined_images[0], video_transcript or transcript)
@@ -129,13 +128,13 @@ def process():
             visual_description = "Visual description unavailable."
         except openai.APIError as e:
             logger.error(f"OpenAI API error: {e}")
-            return jsonify({'success': False, 'error': 'Error communicating with OpenAI API. Please try again later.'}), 500
+            raise ValueError(f'Error communicating with OpenAI API: {str(e)}')
         except openai.AuthenticationError as e:
             logger.error(f"OpenAI API authentication error: {e}")
-            return jsonify({'success': False, 'error': 'Invalid OpenAI API key. Please check your configuration.'}), 500
+            raise ValueError('Invalid OpenAI API key. Please check your configuration.')
         except openai.RateLimitError as e:
             logger.error(f"OpenAI API rate limit error: {e}")
-            return jsonify({'success': False, 'error': 'OpenAI API rate limit exceeded. Please try again later.'}), 429
+            raise ValueError('OpenAI API rate limit exceeded. Please try again later.')
 
         encoded_frames = [base64.b64encode(frame['data']).decode('utf-8') for frame in all_frames]
         base64_combined_image = base64.b64encode(combined_images[0]).decode('utf-8')
@@ -162,9 +161,7 @@ def process():
         return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
         logger.error(f'Unexpected error in /process: {str(e)}', exc_info=True)
-        error_message = "An unexpected error occurred while processing the video. Please try again later or with a different video."
-        if "HTTP Error 400" in str(e):
-            error_message = "Unable to access the YouTube video. It might be unavailable or restricted."
+        error_message = f"An unexpected error occurred while processing the video: {str(e)}"
         return jsonify({'success': False, 'error': error_message}), 500
 
 @app.route('/download/<filename>')
