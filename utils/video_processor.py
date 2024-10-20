@@ -42,31 +42,35 @@ def extract_frames(video_path, num_frames=5, interval=None):
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
     if interval is None:
-        interval = total_frames // num_frames
+        interval = max(1, total_frames // num_frames)
     else:
         num_frames = min(num_frames, total_frames // interval)
+
+    clip_name = os.path.basename(video_path)
+    clip_base_name = os.path.splitext(clip_name)[0]
+    frames_dir = os.path.join(os.path.dirname(video_path), f"{clip_base_name}_frames")
+    os.makedirs(frames_dir, exist_ok=True)
 
     for i in range(num_frames):
         frame_position = i * interval
         cap.set(cv2.CAP_PROP_POS_FRAMES, frame_position)
         ret, frame = cap.read()
         if ret:
+            frame_filename = f"frame_{i}.jpg"
+            frame_path = os.path.join(frames_dir, frame_filename)
+            cv2.imwrite(frame_path, frame)
+            
             _, buffer = cv2.imencode('.jpg', frame)
             frame_data = buffer.tobytes()
-            logger.debug(f"Frame {i} data type: {type(frame_data)}")
-            
-            # Generate the frame filename
-            frame_filename = f"frame_{i}.jpg"
             
             frames.append({
                 'data': frame_data,
                 'timestamp': cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0,
                 'path': frame_filename,
-                'clip': os.path.basename(video_path)
+                'clip': clip_name
             })
             
-            # Debug logging for frame path
-            logger.debug(f"Frame {i} filename: {frame_filename}")
+            logger.debug(f"Saved frame to: {frame_path}")
         else:
             logger.warning(f"Failed to read frame {i} from video")
 
@@ -113,17 +117,6 @@ def process_video(video_path, frames_per_clip=5, frame_interval=None):
     for clip_path in clip_paths:
         frames = extract_frames(clip_path, frames_per_clip, interval=frame_interval)
         all_frames.extend(frames)
-        
-        # Save frames for each clip
-        clip_name = os.path.splitext(os.path.basename(clip_path))[0]
-        frames_dir = os.path.join(directory, f"{clip_name}_frames")
-        os.makedirs(frames_dir, exist_ok=True)
-        
-        for i, frame in enumerate(frames):
-            frame_path = os.path.join(frames_dir, frame['path'])
-            with open(frame_path, "wb") as f:
-                f.write(frame['data'])
-            logger.debug(f"Saved frame to: {frame_path}")
 
     if all_frames:
         logger.info(f"Sorting {len(all_frames)} frames by timestamp")

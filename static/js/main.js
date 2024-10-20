@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', function() {
         frameElement.className = 'timeline-frame';
         const img = document.createElement('img');
         if (frame && frame.clip && frame.path) {
-            img.src = `/download_frame/${frame.clip}/${frame.path}`;
+            img.src = `/download_frame/${encodeURIComponent(frame.clip)}/${encodeURIComponent(frame.path)}`;
             img.alt = `Frame ${index}`;
             img.onerror = function() {
                 console.error(`Failed to load image: ${img.src}`);
@@ -126,26 +126,26 @@ document.addEventListener('DOMContentLoaded', function() {
         col.className = 'col-md-4 mb-3';
         col.innerHTML = `
             <div class="card h-100">
-                <div id="clip-${item.clip}" class="carousel slide" data-bs-ride="carousel">
+                <div id="clip-${encodeURIComponent(item.clip)}" class="carousel slide" data-bs-ride="carousel">
                     <div class="carousel-inner">
                         ${item.frames.map((frame, index) => `
                             <div class="carousel-item ${index === 0 ? 'active' : ''}">
-                                <img src="/download_frame/${item.clip}/${frame}" class="d-block w-100" alt="${frame}" onerror="this.onerror=null; this.src='/static/images/placeholder.jpg'; console.error('Failed to load frame:', '${item.clip}/${frame}');">
+                                <img src="/download_frame/${encodeURIComponent(item.clip)}/${encodeURIComponent(frame)}" class="d-block w-100" alt="${frame}" onerror="this.onerror=null; this.src='/static/images/placeholder.jpg'; console.error('Failed to load frame:', '${item.clip}/${frame}');">
                             </div>
                         `).join('')}
                     </div>
-                    <button class="carousel-control-prev" type="button" data-bs-target="#clip-${item.clip}" data-bs-slide="prev">
+                    <button class="carousel-control-prev" type="button" data-bs-target="#clip-${encodeURIComponent(item.clip)}" data-bs-slide="prev">
                         <span class="carousel-control-prev-icon" aria-hidden="true"></span>
                         <span class="visually-hidden">Previous</span>
                     </button>
-                    <button class="carousel-control-next" type="button" data-bs-target="#clip-${item.clip}" data-bs-slide="next">
+                    <button class="carousel-control-next" type="button" data-bs-target="#clip-${encodeURIComponent(item.clip)}" data-bs-slide="next">
                         <span class="carousel-control-next-icon" aria-hidden="true"></span>
                         <span class="visually-hidden">Next</span>
                     </button>
                 </div>
                 <div class="card-body">
                     <p class="card-text clip-name-small">${item.clip}</p>
-                    <a href="/download/${item.clip}" class="btn btn-primary btn-sm me-2">Download Clip</a>
+                    <a href="/download/${encodeURIComponent(item.clip)}" class="btn btn-primary btn-sm me-2">Download Clip</a>
                 </div>
             </div>
         `;
@@ -154,7 +154,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function scrollToClip(clipName) {
-        const clipElement = document.getElementById(`clip-${clipName}`);
+        const clipElement = document.getElementById(`clip-${encodeURIComponent(clipName)}`);
         if (clipElement) {
             clipElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
         } else {

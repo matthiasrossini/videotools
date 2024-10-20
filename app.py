@@ -156,7 +156,7 @@ def download_frame(clip_name, frame_name):
         return send_from_directory(frames_dir, frame_name)
     else:
         logger.error(f"Frame not found: {frame_name} in directory: {frames_dir}")
-        return "Frame not found", 404
+        return send_file('static/images/placeholder.jpg'), 404
 
 @app.route('/cleanup', methods=['POST'])
 def cleanup():
