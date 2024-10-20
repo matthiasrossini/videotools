@@ -38,6 +38,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (visualDescription) visualDescription.textContent = '';
 
         try {
+            console.log('Submitting form data...');
             const response = await fetch('/process', {
                 method: 'POST',
                 body: formData
@@ -48,6 +49,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             const data = await response.json();
+            console.log('Received data:', data);
 
             if (loading) loading.classList.add('d-none');
 
@@ -55,6 +57,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (results) results.classList.remove('d-none');
 
                 if (data.timeline_frames && timeline) {
+                    console.log('Creating timeline frames...');
                     data.timeline_frames.forEach((frame, index) => {
                         const frameElement = createTimelineFrame(frame, index);
                         timeline.appendChild(frameElement);
@@ -62,6 +65,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 if (data.clips_and_frames && clipList) {
+                    console.log('Creating clip rows...');
                     data.clips_and_frames.forEach(item => {
                         const row = createClipRow(item);
                         clipList.appendChild(row);
@@ -83,6 +87,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error(data.error);
             }
         } catch (error) {
+            console.error('Error processing video:', error);
             if (loading) loading.classList.add('d-none');
             if (error) {
                 error.classList.remove('d-none');
@@ -104,7 +109,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 img.alt = 'Image not found';
             };
         } else {
-            console.error(`Invalid frame data for index ${index}`);
+            console.error(`Invalid frame data for index ${index}:`, frame);
             img.src = '/static/images/placeholder.jpg';
             img.alt = 'Placeholder';
         }
@@ -114,6 +119,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function createClipRow(item) {
+        console.log('Creating clip row for:', item);
         const row = document.createElement('div');
         row.className = 'row mb-4';
         const col = document.createElement('div');
@@ -124,7 +130,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="carousel-inner">
                         ${item.frames.map((frame, index) => `
                             <div class="carousel-item ${index === 0 ? 'active' : ''}">
-                                <img src="/download_frame/${item.clip}/${frame}" class="d-block w-100" alt="${frame}" onerror="this.onerror=null; this.src='/static/images/placeholder.jpg';">
+                                <img src="/download_frame/${item.clip}/${frame}" class="d-block w-100" alt="${frame}" onerror="this.onerror=null; this.src='/static/images/placeholder.jpg'; console.error('Failed to load frame:', '${item.clip}/${frame}');">
                             </div>
                         `).join('')}
                     </div>
@@ -151,6 +157,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const clipElement = document.getElementById(`clip-${clipName}`);
         if (clipElement) {
             clipElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+            console.error(`Clip element not found for: ${clipName}`);
         }
     }
 });

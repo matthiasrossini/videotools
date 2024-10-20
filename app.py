@@ -152,6 +152,7 @@ def download_frame(clip_name, frame_name):
     logger.debug(f"Full frame path: {frame_path}")
     
     if os.path.exists(frame_path):
+        logger.info(f"Serving frame: {frame_name} for clip: {clip_name}")
         return send_from_directory(frames_dir, frame_name)
     else:
         logger.error(f"Frame not found: {frame_name} in directory: {frames_dir}")
