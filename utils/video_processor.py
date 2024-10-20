@@ -139,14 +139,19 @@ def create_combined_images(frames, max_width=65500, max_height=65500, frames_per
 
         logger.debug(f"Processing chunk {i // frames_per_image + 1}")
         for j, frame in enumerate(chunk):
-            logger.debug(f"Frame {j} in chunk {i // frames_per_image + 1} data type: {type(frame['data'])}")
-            if not isinstance(frame['data'], bytes):
-                logger.error(f"Frame {j} in chunk {i // frames_per_image + 1} is not bytes: {type(frame['data'])}")
+            logger.debug(f"Frame {j} in chunk {i // frames_per_image + 1} data type: {type(frame)}")
 
-        decoded_frames = [
-            cv2.imdecode(np.frombuffer(frame['data'], np.uint8), cv2.IMREAD_COLOR)
-            for frame in chunk if isinstance(frame['data'], bytes)
-        ]
+        decoded_frames = []
+        for frame in chunk:
+            try:
+                frame_data = frame if isinstance(frame, bytes) else frame.encode()
+                decoded_frame = cv2.imdecode(np.frombuffer(frame_data, np.uint8), cv2.IMREAD_COLOR)
+                if decoded_frame is not None:
+                    decoded_frames.append(decoded_frame)
+                else:
+                    logger.warning(f"Failed to decode frame in chunk {i // frames_per_image + 1}")
+            except Exception as e:
+                logger.error(f"Error decoding frame in chunk {i // frames_per_image + 1}: {str(e)}")
 
         if not decoded_frames:
             logger.error(f"No valid frames in chunk {i // frames_per_image + 1}")
