@@ -166,7 +166,7 @@ def download_frame(clip_name, frame_name):
         placeholder_path = os.path.join(app.static_folder, 'images', 'placeholder.jpg')
         if os.path.exists(placeholder_path):
             logger.info(f"Serving placeholder image for frame: {frame_name}")
-            return send_file(placeholder_path), 404
+            return send_file(placeholder_path, mimetype='image/jpeg')
         else:
             logger.error("Placeholder image not found")
             return "Frame not found and placeholder image is missing", 404

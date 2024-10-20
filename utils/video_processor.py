@@ -129,4 +129,67 @@ def process_video(video_path: str, frames_per_clip: int = 5, frame_interval: Opt
 
     return clip_paths, all_frames
 
-# ... [rest of the file remains unchanged]
+def get_youtube_transcript(video_id: str) -> Optional[str]:
+    try:
+        transcript = YouTubeTranscriptApi.get_transcript(video_id)
+        return " ".join([entry['text'] for entry in transcript])
+    except Exception as e:
+        logger.error(f"Error fetching YouTube transcript: {e}")
+        return None
+
+def generate_summary(image: np.ndarray, transcript: Optional[str] = None) -> Tuple[str, List[str], str]:
+    try:
+        _, buffer = cv2.imencode('.jpg', image)
+        base64_image = base64.b64encode(buffer).decode('utf-8')
+
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant that can analyze images and provide summaries."},
+            {"role": "user", "content": "Please analyze this image and provide a summary, key points, and a visual description."}
+        ]
+
+        if transcript:
+            messages.append({"role": "user", "content": f"Here's the transcript of the video: {transcript}"})
+
+        messages.append(
+            {"role": "user", "content": f"Image: data:image/jpeg;base64,{base64_image}\nWhat's in this image?"}
+        )
+
+        response = openai.ChatCompletion.create(
+            model="gpt-4-vision-preview",
+            messages=messages,
+            max_tokens=500,
+        )
+
+        summary = response.choices[0].message.content
+        key_points = re.findall(r'\n\s*-\s*(.*)', summary)
+        visual_description = re.search(r'Visual description:(.*?)(?=\n\n|$)', summary, re.DOTALL)
+        visual_description = visual_description.group(1).strip() if visual_description else "No visual description available."
+
+        return summary, key_points, visual_description
+
+    except Exception as e:
+        logger.error(f"Error generating summary: {e}")
+        return "Error generating summary", [], "Error generating visual description"
+
+def create_combined_images(frames: List[bytes]) -> List[bytes]:
+    try:
+        num_frames = len(frames)
+        rows = int(np.ceil(np.sqrt(num_frames)))
+        cols = int(np.ceil(num_frames / rows))
+
+        decoded_frames = [cv2.imdecode(np.frombuffer(frame, np.uint8), cv2.IMREAD_COLOR) for frame in frames]
+        frame_height, frame_width = decoded_frames[0].shape[:2]
+
+        combined_image = np.zeros((frame_height * rows, frame_width * cols, 3), dtype=np.uint8)
+
+        for idx, frame in enumerate(decoded_frames):
+            row = idx // cols
+            col = idx % cols
+            combined_image[row*frame_height:(row+1)*frame_height, col*frame_width:(col+1)*frame_width] = frame
+
+        _, buffer = cv2.imencode('.jpg', combined_image)
+        return [buffer.tobytes()]
+
+    except Exception as e:
+        logger.error(f"Error creating combined images: {e}")
+        return []
